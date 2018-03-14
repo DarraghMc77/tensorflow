@@ -24,6 +24,7 @@ getProject().setBuildDir('gradleBuild')
 
 buildscript {
     repositories {
+        google()
         jcenter()
     }
 
@@ -40,7 +41,7 @@ allprojects {
 }
 
 // set to 'bazel', 'cmake', 'makefile', 'none'
-def nativeBuildSystem = 'bazel'
+def nativeBuildSystem = 'cmake'
 
 // Controls output directory in APK and CPU type for Bazel builds.
 // NOTE: Does not affect the Makefile build target API (yet), which currently
@@ -191,4 +192,9 @@ dependencies {
     if (nativeBuildSystem == 'cmake' || nativeBuildSystem == 'none') {
         compile 'org.tensorflow:tensorflow-android:+'
     }
+    compile 'com.android.support:appcompat-v7:23.1.1'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.5'
+    compile 'com.fasterxml.jackson.core:jackson-core:2.8.5'
+    compile 'com.fasterxml.jackson.core:jackson-annotations:2.8.5'
+    compile 'com.squareup.okhttp3:okhttp:3.8.1'
 }
