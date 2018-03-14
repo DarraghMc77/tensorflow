@@ -16,6 +16,8 @@
 
 package org.tensorflow.demo;
 
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -26,22 +28,23 @@ import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.media.ImageReader.OnImageAvailableListener;
+import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.util.Size;
 import android.util.TypedValue;
-import android.view.Display;
-import android.view.Surface;
 import android.widget.Toast;
-import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Vector;
+
 import org.tensorflow.demo.OverlayView.DrawCallback;
 import org.tensorflow.demo.env.BorderedText;
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
 import org.tensorflow.demo.tracking.MultiBoxTracker;
-import org.tensorflow.demo.R; // Explicit import needed for internal Google builds.
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Vector;
 
 /**
  * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
@@ -59,11 +62,11 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private static final String MB_OUTPUT_SCORES_NAME = "output_scores/Reshape";
   private static final String MB_MODEL_FILE = "file:///android_asset/multibox_model.pb";
   private static final String MB_LOCATION_FILE =
-      "file:///android_asset/multibox_location_priors.txt";
+          "file:///android_asset/multibox_location_priors.txt";
 
   private static final int TF_OD_API_INPUT_SIZE = 300;
   private static final String TF_OD_API_MODEL_FILE =
-      "file:///android_asset/ssd_mobilenet_v1_android_export.pb";
+          "file:///android_asset/ssd_mobilenet_v1_android_export.pb";
   private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/coco_labels_list.txt";
 
   // Configuration values for tiny-yolo-voc. Note that the graph is not included with TensorFlow and
@@ -85,12 +88,18 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   }
   private static final DetectorMode MODE = DetectorMode.TF_OD_API;
 
+  private enum OffloadingMode {
+    LOCAL, SOCKET, HTTP
+  }
+
+  private static final OffloadingMode OFF_MODE = OffloadingMode.LOCAL;
+
   // Minimum detection confidence to track a detection.
   private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
   private static final float MINIMUM_CONFIDENCE_MULTIBOX = 0.1f;
   private static final float MINIMUM_CONFIDENCE_YOLO = 0.25f;
 
-  private static final boolean MAINTAIN_ASPECT = MODE == DetectorMode.YOLO;
+  private static final boolean MAINTAIN_ASPECT = MODE == DetectorMode.TF_OD_API;
 
   private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
 
@@ -117,12 +126,14 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   private byte[] luminanceCopy;
 
+  private DetectionOffloadingClient doc = new DetectionOffloadingClient();
+
   private BorderedText borderedText;
   @Override
   public void onPreviewSizeChosen(final Size size, final int rotation) {
     final float textSizePx =
-        TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
+            TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);
     borderedText.setTypeface(Typeface.MONOSPACE);
 
@@ -131,36 +142,36 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     int cropSize = TF_OD_API_INPUT_SIZE;
     if (MODE == DetectorMode.YOLO) {
       detector =
-          TensorFlowYoloDetector.create(
-              getAssets(),
-              YOLO_MODEL_FILE,
-              YOLO_INPUT_SIZE,
-              YOLO_INPUT_NAME,
-              YOLO_OUTPUT_NAMES,
-              YOLO_BLOCK_SIZE);
+              TensorFlowYoloDetector.create(
+                      getAssets(),
+                      YOLO_MODEL_FILE,
+                      YOLO_INPUT_SIZE,
+                      YOLO_INPUT_NAME,
+                      YOLO_OUTPUT_NAMES,
+                      YOLO_BLOCK_SIZE);
       cropSize = YOLO_INPUT_SIZE;
     } else if (MODE == DetectorMode.MULTIBOX) {
       detector =
-          TensorFlowMultiBoxDetector.create(
-              getAssets(),
-              MB_MODEL_FILE,
-              MB_LOCATION_FILE,
-              MB_IMAGE_MEAN,
-              MB_IMAGE_STD,
-              MB_INPUT_NAME,
-              MB_OUTPUT_LOCATIONS_NAME,
-              MB_OUTPUT_SCORES_NAME);
+              TensorFlowMultiBoxDetector.create(
+                      getAssets(),
+                      MB_MODEL_FILE,
+                      MB_LOCATION_FILE,
+                      MB_IMAGE_MEAN,
+                      MB_IMAGE_STD,
+                      MB_INPUT_NAME,
+                      MB_OUTPUT_LOCATIONS_NAME,
+                      MB_OUTPUT_SCORES_NAME);
       cropSize = MB_INPUT_SIZE;
     } else {
       try {
         detector = TensorFlowObjectDetectionAPIModel.create(
-            getAssets(), TF_OD_API_MODEL_FILE, TF_OD_API_LABELS_FILE, TF_OD_API_INPUT_SIZE);
+                getAssets(), TF_OD_API_MODEL_FILE, TF_OD_API_LABELS_FILE, TF_OD_API_INPUT_SIZE);
         cropSize = TF_OD_API_INPUT_SIZE;
       } catch (final IOException e) {
         LOGGER.e("Exception initializing classifier!", e);
         Toast toast =
-            Toast.makeText(
-                getApplicationContext(), "Classifier could not be initialized", Toast.LENGTH_SHORT);
+                Toast.makeText(
+                        getApplicationContext(), "Classifier could not be initialized", Toast.LENGTH_SHORT);
         toast.show();
         finish();
       }
@@ -174,87 +185,93 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
     rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
-    croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Config.ARGB_8888);
+    croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Config.ARGB_8888); //TODO:: maybe change this to RGB_565 for performance increase
 
     frameToCropTransform =
-        ImageUtils.getTransformationMatrix(
-            previewWidth, previewHeight,
-            cropSize, cropSize,
-            sensorOrientation, MAINTAIN_ASPECT);
+            ImageUtils.getTransformationMatrix(
+                    previewWidth, previewHeight,
+                    cropSize, cropSize,
+                    sensorOrientation, MAINTAIN_ASPECT);
 
     cropToFrameTransform = new Matrix();
     frameToCropTransform.invert(cropToFrameTransform);
 
     trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
     trackingOverlay.addCallback(
-        new DrawCallback() {
-          @Override
-          public void drawCallback(final Canvas canvas) {
-            tracker.draw(canvas);
-            if (isDebug()) {
-              tracker.drawDebug(canvas);
-            }
-          }
-        });
+            new DrawCallback() {
+              @Override
+              public void drawCallback(final Canvas canvas) {
+                tracker.draw(canvas);
+                if (isDebug()) {
+                  tracker.drawDebug(canvas);
+                }
+              }
+            });
 
     addCallback(
-        new DrawCallback() {
-          @Override
-          public void drawCallback(final Canvas canvas) {
-            if (!isDebug()) {
-              return;
-            }
-            final Bitmap copy = cropCopyBitmap;
-            if (copy == null) {
-              return;
-            }
+            new DrawCallback() {
+              @Override
+              public void drawCallback(final Canvas canvas) {
+                if (!isDebug()) {
+                  return;
+                }
+                final Bitmap copy = cropCopyBitmap;
+                if (copy == null) {
+                  return;
+                }
 
-            final int backgroundColor = Color.argb(100, 0, 0, 0);
-            canvas.drawColor(backgroundColor);
+                final int backgroundColor = Color.argb(100, 0, 0, 0);
+                canvas.drawColor(backgroundColor);
 
-            final Matrix matrix = new Matrix();
-            final float scaleFactor = 2;
-            matrix.postScale(scaleFactor, scaleFactor);
-            matrix.postTranslate(
-                canvas.getWidth() - copy.getWidth() * scaleFactor,
-                canvas.getHeight() - copy.getHeight() * scaleFactor);
-            canvas.drawBitmap(copy, matrix, new Paint());
+                final Matrix matrix = new Matrix();
+                final float scaleFactor = 2;
+                matrix.postScale(scaleFactor, scaleFactor);
+                matrix.postTranslate(
+                        canvas.getWidth() - copy.getWidth() * scaleFactor,
+                        canvas.getHeight() - copy.getHeight() * scaleFactor);
+                canvas.drawBitmap(copy, matrix, new Paint());
 
-            final Vector<String> lines = new Vector<String>();
-            if (detector != null) {
-              final String statString = detector.getStatString();
-              final String[] statLines = statString.split("\n");
-              for (final String line : statLines) {
-                lines.add(line);
+                final Vector<String> lines = new Vector<String>();
+                if (detector != null) {
+                  final String statString = detector.getStatString();
+                  final String[] statLines = statString.split("\n");
+                  for (final String line : statLines) {
+                    lines.add(line);
+                  }
+                }
+                lines.add("");
+
+                lines.add("Frame: " + previewWidth + "x" + previewHeight);
+                lines.add("Crop: " + copy.getWidth() + "x" + copy.getHeight());
+                lines.add("View: " + canvas.getWidth() + "x" + canvas.getHeight());
+                lines.add("Rotation: " + sensorOrientation);
+                lines.add("Inference time: " + lastProcessingTimeMs + "ms");
+
+                borderedText.drawLines(canvas, 10, canvas.getHeight() - 10, lines);
               }
-            }
-            lines.add("");
-
-            lines.add("Frame: " + previewWidth + "x" + previewHeight);
-            lines.add("Crop: " + copy.getWidth() + "x" + copy.getHeight());
-            lines.add("View: " + canvas.getWidth() + "x" + canvas.getHeight());
-            lines.add("Rotation: " + sensorOrientation);
-            lines.add("Inference time: " + lastProcessingTimeMs + "ms");
-
-            borderedText.drawLines(canvas, 10, canvas.getHeight() - 10, lines);
-          }
-        });
+            });
   }
 
   OverlayView trackingOverlay;
 
   @Override
   protected void processImage() {
+    Intent batteryIntent = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+    int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+    int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+    LOGGER.i("BATTERY LEVEL: " + level);
+    LOGGER.i("SCALE:  " + scale);
+
     ++timestamp;
     final long currTimestamp = timestamp;
     byte[] originalLuminance = getLuminance();
     tracker.onFrame(
-        previewWidth,
-        previewHeight,
-        getLuminanceStride(),
-        sensorOrientation,
-        originalLuminance,
-        timestamp);
+            previewWidth,
+            previewHeight,
+            getLuminanceStride(),
+            sensorOrientation,
+            originalLuminance,
+            timestamp);
     trackingOverlay.postInvalidate();
 
     // No mutex needed as this method is not reentrant.
@@ -281,55 +298,101 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     }
 
     runInBackground(
-        new Runnable() {
-          @Override
-          public void run() {
-            LOGGER.i("Running detection on image " + currTimestamp);
-            final long startTime = SystemClock.uptimeMillis();
-            final List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
-            lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+            new Runnable() {
+              @Override
+              public void run() {
+                LOGGER.i("Running detection on image " + currTimestamp);
+                final long startTime = SystemClock.uptimeMillis();
 
-            cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
-            final Canvas canvas = new Canvas(cropCopyBitmap);
-            final Paint paint = new Paint();
-            paint.setColor(Color.RED);
-            paint.setStyle(Style.STROKE);
-            paint.setStrokeWidth(2.0f);
+                List<Classifier.Recognition> results = new ArrayList<Classifier.Recognition>();
 
-            float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-            switch (MODE) {
-              case TF_OD_API:
-                minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-                break;
-              case MULTIBOX:
-                minimumConfidence = MINIMUM_CONFIDENCE_MULTIBOX;
-                break;
-              case YOLO:
-                minimumConfidence = MINIMUM_CONFIDENCE_YOLO;
-                break;
-            }
+                // Check whether offloading saves energy vs local processing
+//            OffloadingDecision.getObjDetWiFiDecision();
 
-            final List<Classifier.Recognition> mappedRecognitions =
-                new LinkedList<Classifier.Recognition>();
 
-            for (final Classifier.Recognition result : results) {
-              final RectF location = result.getLocation();
-              if (location != null && result.getConfidence() >= minimumConfidence) {
-                canvas.drawRect(location, paint);
 
-                cropToFrameTransform.mapRect(location);
-                result.setLocation(location);
-                mappedRecognitions.add(result);
+                if(OFF_MODE == OffloadingMode.LOCAL){
+                  LOGGER.i("LOCAL Processing mode");
+                  results = detector.recognizeImage(croppedBitmap);
+                }
+                else if(OFF_MODE == OffloadingMode.HTTP) {
+                  LOGGER.i("HTTP MODE");
+                  List<OffloadingClassifierResult> serverResult;
+                  try{
+                    serverResult = doc.postImage(croppedBitmap, startTime);
+                    LOGGER.i("Recieved Result End: " + (SystemClock.uptimeMillis() - startTime));
+                  }
+                  catch (Exception e){
+                    serverResult = null;
+                    LOGGER.i("ERROR: Unable to connect to the server");
+                  }
+
+                  long startTime3 = SystemClock.uptimeMillis();
+
+                  // TODO: use java 8 streams .map() - slower don't
+
+                  for (OffloadingClassifierResult result: serverResult) {
+                    final RectF boundingBox =
+                            new RectF(
+                                    Math.max(0, result.getTopleft().getX() - result.getBottomRight().getX() / 2),
+                                    Math.max(0, result.getTopleft().getY() - result.getBottomRight().getY() / 2),
+                                    Math.min(300 - 1, result.getTopleft().getX() + result.getBottomRight().getX() / 2),
+                                    Math.min(300 - 1, result.getTopleft().getY() + result.getBottomRight().getY() / 2));
+                    results.add(new Classifier.Recognition("Prediction ", result.getLabel(), result.getConfidence(), boundingBox));
+                  }
+
+                  LOGGER.i("Converted to result: " + (SystemClock.uptimeMillis() - startTime3));
+                }
+                else if(OFF_MODE == OffloadingMode.SOCKET){
+                  LOGGER.i("Offloading using socket connection");
+//              OffloadingClassifierResult serverResult = off_socket_client.sendBitmap(croppedBitmap, socket);
+//              final RectF boundingBox = new RectF(serverResult.getTopleft().getX(), serverResult.getTopleft().getY(), serverResult.getBottomRight().getX(), serverResult.getBottomRight().getY());
+//              results.add(new Classifier.Recognition("Prediction ", serverResult.getLabel(), serverResult.getConfidence(), boundingBox));
+                }
+
+                lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+
+                cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
+                final Canvas canvas = new Canvas(cropCopyBitmap);
+                final Paint paint = new Paint();
+                paint.setColor(Color.RED);
+                paint.setStyle(Style.STROKE);
+                paint.setStrokeWidth(2.0f);
+
+                float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+                switch (MODE) {
+                  case TF_OD_API:
+                    minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+                    break;
+                  case MULTIBOX:
+                    minimumConfidence = MINIMUM_CONFIDENCE_MULTIBOX;
+                    break;
+                  case YOLO:
+                    minimumConfidence = MINIMUM_CONFIDENCE_YOLO;
+                    break;
+                }
+
+                final List<Classifier.Recognition> mappedRecognitions =
+                        new LinkedList<Classifier.Recognition>();
+
+                for (final Classifier.Recognition result : results) {
+                  final RectF location = result.getLocation();
+                  if (location != null && result.getConfidence() >= minimumConfidence) {
+                    canvas.drawRect(location, paint);
+
+                    cropToFrameTransform.mapRect(location);
+                    result.setLocation(location);
+                    mappedRecognitions.add(result);
+                  }
+                }
+
+                tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
+                trackingOverlay.postInvalidate();
+
+                requestRender();
+                computingDetection = false;
               }
-            }
-
-            tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
-            trackingOverlay.postInvalidate();
-
-            requestRender();
-            computingDetection = false;
-          }
-        });
+            });
   }
 
   @Override
