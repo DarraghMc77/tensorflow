@@ -26,15 +26,14 @@ import android.media.ImageReader.OnImageAvailableListener;
 import android.os.SystemClock;
 import android.util.Size;
 import android.util.TypedValue;
-import android.view.Display;
-import android.view.Surface;
-import java.util.List;
-import java.util.Vector;
+
 import org.tensorflow.demo.OverlayView.DrawCallback;
 import org.tensorflow.demo.env.BorderedText;
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
-import org.tensorflow.demo.R; // Explicit import needed for internal Google builds.
+
+import java.util.List;
+import java.util.Vector;
 
 public class ClassifierActivity extends CameraActivity implements OnImageAvailableListener {
   private static final Logger LOGGER = new Logger();
@@ -104,7 +103,7 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
   private static final float TEXT_SIZE_DIP = 10;
 
   @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation) {
+  public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
     final float textSizePx = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);

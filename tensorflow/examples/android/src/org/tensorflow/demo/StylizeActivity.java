@@ -351,7 +351,7 @@ public class StylizeActivity extends CameraActivity implements OnImageAvailableL
   }
 
   @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation) {
+  public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
     final float textSizePx = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);

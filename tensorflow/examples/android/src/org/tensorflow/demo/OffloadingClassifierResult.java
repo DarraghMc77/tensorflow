@@ -10,6 +10,15 @@ public class OffloadingClassifierResult {
     Coordinate bottomright;
     float confidence;
     String label;
+    int imageNumber;
+
+    public int getImageNumber() {
+        return imageNumber;
+    }
+
+    public void setImageNumber(int imageNumber) {
+        this.imageNumber = imageNumber;
+    }
 
     public String getLabel() {
         return label;
@@ -33,8 +42,8 @@ public class OffloadingClassifierResult {
         return bottomright;
     }
 
-    public void setBottomRight(Coordinate bottomRight) {
-        this.bottomright = bottomRight;
+    public void setBottomRight(Coordinate bottomright) {
+        this.bottomright = bottomright;
     }
 
     public Coordinate getTopleft() {
@@ -54,7 +63,7 @@ public class OffloadingClassifierResult {
             return y;
         }
 
-        public void setY(int y) {
+        public void setY(float y) {
             this.y = y;
         }
 
@@ -62,7 +71,7 @@ public class OffloadingClassifierResult {
             return x;
         }
 
-        public void setX(int x) {
+        public void setX(float x) {
             this.x = x;
         }
     }

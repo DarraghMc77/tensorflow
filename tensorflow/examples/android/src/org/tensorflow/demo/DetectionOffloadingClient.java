@@ -21,7 +21,6 @@ import okhttp3.Response;
  * Created by Darragh on 09/02/2018.
  */
 
-
 //TODO: losing 15ms somewhere in here, taking 5ms over network, taking 64ms on server for detection, around 90ms following all of this
 // Could save about 3 ms using sockets as opposed to http
 public class DetectionOffloadingClient {
@@ -33,21 +32,22 @@ public class DetectionOffloadingClient {
             .parse("text/plain; charset=uint-8");
     private final OkHttpClient client = new OkHttpClient();
 
-    public List<OffloadingClassifierResult> postImage(Bitmap image, final long startTime) throws Exception {
+    public static final MediaType JSON
+            = MediaType.parse("application/json; charset=utf-8");
 
+    public List<OffloadingClassifierResult> postImage(Bitmap image, final long startTime) throws Exception {
         long startTime2 = SystemClock.uptimeMillis();
         byte[] byteImage = getBytesFromBitmap(image);
         LOGGER.i("Converted to bytes: " + (SystemClock.uptimeMillis() - startTime2));
 
         Request request = new Request.Builder()
-                .url(" http://192.168.6.131:5010/detect")
+                .url("http://db7af49d.ngrok.io/detect")
                 .post(RequestBody.create(MEDIA_TYPE_PLAINTEXT, byteImage))
                 .build();
 
         startTime2 = SystemClock.uptimeMillis();
         Response response = client.newCall(request).execute();
         LOGGER.i("Sent and Received Result: " + (SystemClock.uptimeMillis() - startTime2));
-
         String restr = response.body().string();
 
         startTime2 = SystemClock.uptimeMillis();
@@ -55,6 +55,18 @@ public class DetectionOffloadingClient {
         LOGGER.i("Mapped to new value: " + (SystemClock.uptimeMillis() - startTime2));
 
         return classifierResult;
+    }
+
+    public int postResult(List<OffloadingClassifierResult> results, int image_number) throws Exception {
+        String json_convert = mapper.writeValueAsString(results);
+
+        Request request = new Request.Builder()
+                .url("http://db7af49d.ngrok.io/result")
+                .post(RequestBody.create(JSON, json_convert))
+                .build();
+
+        Response response = client.newCall(request).execute();
+        return 1;
     }
 
     public byte[] getBytesFromBitmap(Bitmap bitmap) {

@@ -20,6 +20,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
@@ -40,13 +41,15 @@ import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.WindowManager;
 import android.widget.Toast;
-import java.nio.ByteBuffer;
+
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
-import org.tensorflow.demo.R; // Explicit import needed for internal Google builds.
+
+import java.nio.ByteBuffer;
 
 public abstract class CameraActivity extends Activity
     implements OnImageAvailableListener, Camera.PreviewCallback {
+
   private static final Logger LOGGER = new Logger();
 
   private static final int PERMISSIONS_REQUEST = 1;
@@ -70,6 +73,9 @@ public abstract class CameraActivity extends Activity
   private Runnable postInferenceCallback;
   private Runnable imageConverter;
 
+
+  public static DetectorSettings detectorSettings;
+
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
     LOGGER.d("onCreate " + this);
@@ -77,6 +83,8 @@ public abstract class CameraActivity extends Activity
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
     setContentView(R.layout.activity_camera);
+    Intent otherIntent = getIntent();
+    detectorSettings = (DetectorSettings)otherIntent.getSerializableExtra("sampleObject");
 
     if (hasPermission()) {
       setFragment();
@@ -117,7 +125,7 @@ public abstract class CameraActivity extends Activity
         previewHeight = previewSize.height;
         previewWidth = previewSize.width;
         rgbBytes = new int[previewWidth * previewHeight];
-        onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90);
+        onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90, detectorSettings);
       }
     } catch (final Exception e) {
       LOGGER.e(e, "Exception!");
@@ -358,10 +366,15 @@ public abstract class CameraActivity extends Activity
           CameraConnectionFragment.newInstance(
               new CameraConnectionFragment.ConnectionCallback() {
                 @Override
-                public void onPreviewSizeChosen(final Size size, final int rotation) {
+                public void onPreviewSizeChosen(Size size, int cameraRotation) {
+
+                }
+
+                @Override
+                public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
                   previewHeight = size.getHeight();
                   previewWidth = size.getWidth();
-                  CameraActivity.this.onPreviewSizeChosen(size, rotation);
+                  CameraActivity.this.onPreviewSizeChosen(size, rotation, detectorSettings);
                 }
               },
               this,
@@ -446,7 +459,7 @@ public abstract class CameraActivity extends Activity
 
   protected abstract void processImage();
 
-  protected abstract void onPreviewSizeChosen(final Size size, final int rotation);
+  protected abstract void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings);
   protected abstract int getLayoutId();
   protected abstract Size getDesiredPreviewFrameSize();
 }
