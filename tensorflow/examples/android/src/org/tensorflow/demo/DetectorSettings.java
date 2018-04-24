@@ -13,10 +13,10 @@ public class DetectorSettings implements Serializable {
     private Boolean testing;
     private Boolean enableTracking;
 
-    public DetectorSettings(){
-        this.offloadingMode = DetectorActivity.OffloadingMode.LOCAL;
-        this.testing = false;
-        this.enableTracking = true;
+    public DetectorSettings(DetectorActivity.OffloadingMode offloadingMode, Boolean testing, Boolean enableTracking){
+        this.offloadingMode = offloadingMode;
+        this.testing = testing;
+        this.enableTracking = enableTracking;
     }
 
     public Boolean getEnableTracking() {

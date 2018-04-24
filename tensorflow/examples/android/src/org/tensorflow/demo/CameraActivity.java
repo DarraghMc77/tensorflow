@@ -73,7 +73,6 @@ public abstract class CameraActivity extends Activity
   private Runnable postInferenceCallback;
   private Runnable imageConverter;
 
-
   public static DetectorSettings detectorSettings;
 
   @Override
@@ -83,8 +82,9 @@ public abstract class CameraActivity extends Activity
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
     setContentView(R.layout.activity_camera);
+
     Intent otherIntent = getIntent();
-    detectorSettings = (DetectorSettings)otherIntent.getSerializableExtra("sampleObject");
+    detectorSettings = (DetectorSettings)otherIntent.getSerializableExtra("detectorSettings");
 
     if (hasPermission()) {
       setFragment();

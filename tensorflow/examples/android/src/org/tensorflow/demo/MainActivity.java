@@ -9,26 +9,25 @@ public class MainActivity extends Activity {
 
     Button localButton;
     Button serverButton;
+    Button enableTestButton;
+    Button disableTestButton;
+    Button launchApplication;
+    Button enableTrackingButton;
+    Button disableTrackingButton;
+    DetectorSettings detectorSettings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        detectorSettings = new DetectorSettings(DetectorActivity.OffloadingMode.LOCAL, false, true);
+
         localButton = (Button) findViewById(R.id.local_button);
 
         localButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                // Code here executes on main thread after user presses button
-                // Start NewActivity.class
-                DetectorSettings detectorSettings = new DetectorSettings();
                 detectorSettings.setOffloadingMode(DetectorActivity.OffloadingMode.LOCAL);
-
-                Intent myIntent = new Intent(MainActivity.this,
-                        DetectorActivity.class);
-
-                myIntent.putExtra("sampleObject", detectorSettings);
-                startActivity(myIntent);
             }
         });
 
@@ -36,15 +35,52 @@ public class MainActivity extends Activity {
 
         serverButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                // Code here executes on main thread after user presses button
-                // Start NewActivity.class
-                DetectorSettings detectorSettings = new DetectorSettings();
                 detectorSettings.setOffloadingMode(DetectorActivity.OffloadingMode.HTTP);
+            }
+        });
 
+        disableTestButton = (Button) findViewById(R.id.disable_testing_button);
+
+        disableTestButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                detectorSettings.setTesting(false);
+            }
+        });
+
+        enableTestButton = (Button) findViewById(R.id.enable_testing_button);
+
+        enableTestButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                detectorSettings.setTesting(true);
+
+            }
+        });
+
+        enableTrackingButton = (Button) findViewById(R.id.enable_tracking_button);
+
+        enableTrackingButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                detectorSettings.setEnableTracking(true);
+            }
+        });
+
+        disableTrackingButton = (Button) findViewById(R.id.disable_tracking_button);
+
+        disableTrackingButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                detectorSettings.setEnableTracking(false);
+
+            }
+        });
+
+        launchApplication = (Button) findViewById(R.id.launch_button);
+
+        launchApplication.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
                 Intent myIntent = new Intent(MainActivity.this,
                         DetectorActivity.class);
 
-                myIntent.putExtra("sampleObject", detectorSettings);
+                myIntent.putExtra("detectorSettings", detectorSettings);
                 startActivity(myIntent);
             }
         });
