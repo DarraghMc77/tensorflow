@@ -4,63 +4,13 @@
     android:layout_height="match_parent" >
 
     <Button
-        android:id="@+id/local_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/server_button"
-        android:layout_alignBottom="@+id/server_button"
-        android:layout_marginEnd="55dp"
-        android:layout_toStartOf="@+id/server_button"
-        android:text="Local" />
-
-    <Button
-        android:id="@+id/server_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginEnd="61dp"
-        android:layout_marginTop="131dp"
-        android:text="Server Based" />
-        android:layout_centerHorizontal="true" />
-
-    <Button
-        android:id="@+id/enable_testing_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/disable_testing_button"
-        android:layout_alignBottom="@+id/disable_testing_button"
-        android:layout_alignEnd="@+id/server_button"
-        android:text="Testing" />
-
-    <Button
-        android:id="@+id/disable_testing_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/local_button"
-        android:layout_centerVertical="true"
-        android:text="Non-Testing" />
-        android:layout_centerHorizontal="true" />
-
-    <Button
-        android:id="@+id/enable_tracking_button"
+        android:id="@+id/settings_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/launch_button"
-        android:layout_marginBottom="48dp"
-        android:layout_marginEnd="13dp"
-        android:layout_toStartOf="@+id/server_button"
-        android:text="Enable Tracking" />
-
-    <Button
-        android:id="@+id/disable_tracking_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/enable_tracking_button"
-        android:layout_alignBottom="@+id/enable_tracking_button"
-        android:layout_marginStart="12dp"
-        android:layout_toEndOf="@+id/enable_tracking_button"
-        android:text="Disable Tracking" />
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="82dp"
+        android:text="Settings" />
 
     <Button
         android:id="@+id/launch_button"
@@ -68,7 +18,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="69dp"
+        android:layout_marginBottom="187dp"
         android:text="Launch Application" />
 
 </RelativeLayout>

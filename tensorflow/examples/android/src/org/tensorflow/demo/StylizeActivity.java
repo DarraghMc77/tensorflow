@@ -17,6 +17,7 @@
 package org.tensorflow.demo;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -351,7 +352,7 @@ public class StylizeActivity extends CameraActivity implements OnImageAvailableL
   }
 
   @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
+  public void onPreviewSizeChosen(final Size size, final int rotation, SharedPreferences sharedPref) {
     final float textSizePx = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);

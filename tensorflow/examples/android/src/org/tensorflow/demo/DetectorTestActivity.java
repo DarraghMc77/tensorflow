@@ -5,7 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.RectF;
+import android.os.StrictMode;
+import android.os.SystemClock;
 
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
@@ -36,7 +37,12 @@ public class DetectorTestActivity {
 
     public void testImages(Context context, Classifier detector){
 
-        for(int i=0; i < numberOfImages; i++){
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+
+        StrictMode.setThreadPolicy(policy);
+
+        int i;
+        for(i=0; i < numberOfImages; i++){
             rgbFrameBitmap = Bitmap.createBitmap(300, 300, Config.ARGB_8888);
             croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Config.ARGB_8888);
 
@@ -63,42 +69,58 @@ public class DetectorTestActivity {
                 LOGGER.i("FRAME DIFFERENCE: image: " + i + "difference: "+ frameDifference);
             }
 
-            List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
+//            List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
 
-            List<OffloadingClassifierResult> testResults = new ArrayList<OffloadingClassifierResult>();;
+            final long startTime = SystemClock.uptimeMillis();
+            LOGGER.i("HTTP MODE");
+            List<OffloadingClassifierResult> serverResult;
+            try{
+                serverResult = doc.postImage(croppedBitmap, startTime);
+                LOGGER.i("Recieved Result End: " + (SystemClock.uptimeMillis() - startTime));
+            }
+            catch (Exception e){
+                serverResult = null;
+                LOGGER.i("ERROR: Unable to connect to the server");
+            }
 
-            for (final Classifier.Recognition result : results) {
-                final RectF location = result.getLocation();
-                if (location != null && result.getConfidence() >= minimumConfidence) {
+//            List<OffloadingClassifierResult> testResults = new ArrayList<OffloadingClassifierResult>();;
 
-                    OffloadingClassifierResult newResult = new OffloadingClassifierResult();
-                    newResult.setLabel(result.getTitle());
-                    newResult.setConfidence(result.getConfidence());
-                    OffloadingClassifierResult.Coordinate bottomRight = new OffloadingClassifierResult.Coordinate();
-                    bottomRight.setX(result.getLocation().right);
-                    bottomRight.setY(result.getLocation().bottom);
-                    newResult.setBottomRight(bottomRight);
+//            for (final Classifier.Recognition result : results) {
+//                final RectF location = result.getLocation();
+//                if (location != null && result.getConfidence() >= minimumConfidence) {
+//
+//                    OffloadingClassifierResult newResult = new OffloadingClassifierResult();
+//                    newResult.setLabel(result.getTitle());
+//                    newResult.setConfidence(result.getConfidence());
+//                    OffloadingClassifierResult.Coordinate bottomRight = new OffloadingClassifierResult.Coordinate();
+//                    bottomRight.setX(result.getLocation().right);
+//                    bottomRight.setY(result.getLocation().bottom);
+//                    newResult.setBottomRight(bottomRight);
+//
+//
+//                    OffloadingClassifierResult.Coordinate topLeft = new OffloadingClassifierResult.Coordinate();
+//                    topLeft.setX(result.getLocation().left);
+//                    topLeft.setY(result.getLocation().top);
+//                    newResult.setTopleft(topLeft);
+//
+//                    newResult.setImageNumber(i);
+//
+//                    testResults.add(newResult);
+//                }
+//            }
 
-
-                    OffloadingClassifierResult.Coordinate topLeft = new OffloadingClassifierResult.Coordinate();
-                    topLeft.setX(result.getLocation().left);
-                    topLeft.setY(result.getLocation().top);
-                    newResult.setTopleft(topLeft);
-
-                    newResult.setImageNumber(i);
-
-                    testResults.add(newResult);
-                }
+            if(i == numberOfImages - 2){
+                i=0;
             }
 
             previousFrame = croppedBitmap;
 
-            try{
-                int resp = doc.postResult(testResults, i);
-            }
-            catch (Exception e){
-                LOGGER.i(e.getMessage());
-            }
+//            try{
+//                int resp = doc.postResult(testResults, i);
+//            }
+//            catch (Exception e){
+//                LOGGER.i(e.getMessage());
+//            }
         }
 
     }

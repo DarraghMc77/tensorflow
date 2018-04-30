@@ -18,6 +18,7 @@ package org.tensorflow.demo;
 
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -86,10 +87,10 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private enum DetectorMode {
     TF_OD_API, MULTIBOX, YOLO;
   }
-  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
+  private static final DetectorMode MODE = DetectorMode.YOLO;
 
   public enum OffloadingMode {
-    LOCAL, SOCKET, HTTP
+    LOCAL, HTTP, SOCKET, TRACKING
   }
 
 //  private static OffloadingMode OFF_MODE = OffloadingMode.LOCAL;
@@ -101,7 +102,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   private static final boolean MAINTAIN_ASPECT = MODE == DetectorMode.TF_OD_API;
 
-  private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
+  private static final Size DESIRED_PREVIEW_SIZE = new Size(720, 960);
 
   private static final boolean SAVE_PREVIEW_BITMAP = false;
   private static final float TEXT_SIZE_DIP = 10;
@@ -130,24 +131,37 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private ReadVideo videoReader = new ReadVideo();
   private static int imageCount = 0;
 
-//  private static final Boolean testing = false;
+  private long detectionCount = 0;
+  private long averageInferanceTime = 0;
+  private long totalInferanceTime = 0;
 
-//  private static final Boolean enableTracking = true;
+  private Bitmap previousFrame = null;
 
   private SimpleOffloadingDecision offloadingDecision = new SimpleOffloadingDecision();
 
   private final long LOCAL_PROCESSING_TIME = 600;
 
+  private static Boolean tracking = true;
+  private static Boolean testing = false;
+  private static OffloadingMode offloadingMode = OffloadingMode.LOCAL;
+
   private BorderedText borderedText;
   @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
+  public void onPreviewSizeChosen(final Size size, final int rotation, SharedPreferences sharedPref) {
     final float textSizePx =
             TypedValue.applyDimension(
                     TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);
     borderedText.setTypeface(Typeface.MONOSPACE);
 
-    if(detectorSettings.getEnableTracking()){
+    tracking = sharedPref.getBoolean("tracking_switch", true);
+    testing = sharedPref.getBoolean("testing_switch", false);
+    int offloadMode = Integer.parseInt(sharedPref.getString("offloading_mode", "0")); //java.lang.String cannot be cast to java.lang.Integer
+    int detectionModel = Integer.parseInt(sharedPref.getString("detection_model", "0"));
+
+    offloadingMode = OffloadingMode.values()[offloadMode];
+
+    if(tracking){
       tracker = new MultiBoxTracker(this);
     }
 
@@ -189,10 +203,15 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
       }
     }
 
+//    if(detectorSettings.getTesting()){
+//      DetectorTestActivity dta = new DetectorTestActivity();
+//      dta.testImages(getApplicationContext(), detector);
+//    }
+
     previewWidth = size.getWidth();
     previewHeight = size.getHeight();
 
-    if(detectorSettings.getTesting()){
+    if(testing){
       sensorOrientation = 0;
     }
     else{
@@ -205,7 +224,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
     croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Config.ARGB_8888); //TODO:: maybe change this to RGB_565 for performance increase
 
-    if(detectorSettings.getTesting()){
+    if(testing){
       frameToCropTransform =
               ImageUtils.getTransformationMatrix(
                       300, 300,
@@ -223,7 +242,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     cropToFrameTransform = new Matrix();
     frameToCropTransform.invert(cropToFrameTransform);
 
-    if(detectorSettings.getEnableTracking()){
+    if(tracking){
       trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
       trackingOverlay.addCallback(
               new DrawCallback() {
@@ -290,10 +309,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
     int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
     LOGGER.i("BATTERY LEVEL: " + level);
-    LOGGER.i("SCALE:  " + scale);
 
     ArrayList<Bitmap> gt_images = new ArrayList<Bitmap>();
-    if (detectorSettings.getTesting()) {
+    if (testing) {
         try {
           gt_images.add(videoReader.readVideo(getApplicationContext(), imageCount));
         }
@@ -302,16 +320,17 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
           LOGGER.i("NEW ERROR: " + e.getMessage());
         }
 
-      if(imageCount < 629){
-        imageCount++;
-      }
+    }
+
+    if(imageCount < 629){
+      imageCount++;
     }
 
     ++timestamp;
     final long currTimestamp = timestamp;
     byte[] originalLuminance = getLuminance();
 
-    if(detectorSettings.getEnableTracking()){
+    if(tracking){
       tracker.onFrame(
               previewWidth,
               previewHeight,
@@ -338,8 +357,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     System.arraycopy(originalLuminance, 0, luminanceCopy, 0, originalLuminance.length);
     readyForNextImage();
 
-//    Testing
-    if(detectorSettings.getTesting()) {
+    if(testing) {
       final Canvas canvas = new Canvas(croppedBitmap);
       canvas.drawBitmap(gt_images.get(0), frameToCropTransform, null);
     }
@@ -358,9 +376,14 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
               @Override
               public void run() {
 
-                if(detectorSettings.getTesting()){
+                if(testing){
                   DetectorTestActivity dta = new DetectorTestActivity();
                   dta.testImages(getApplicationContext(), detector);
+                }
+
+                if(imageCount > 2) {
+                  double frameDifference = videoReader.getDifferencePercent(croppedBitmap, previousFrame);
+                  LOGGER.i("FRAME DIFFERENCE: "+ frameDifference + "%");
                 }
 
                 LOGGER.i("Running detection on image " + currTimestamp);
@@ -370,12 +393,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
 //                OFF_MODE = offloadingDecision.makeDecision(lastProcessingTimeMs, LOCAL_PROCESSING_TIME);
 
-                if(detectorSettings.getOffloadingMode() == OffloadingMode.LOCAL){
+                if(offloadingMode == OffloadingMode.LOCAL){
                   LOGGER.i("LOCAL Processing mode");
                   results = detector.recognizeImage(croppedBitmap);
                   LOGGER.i(results.toString());
                 }
-                else if(detectorSettings.getOffloadingMode() == OffloadingMode.HTTP) {
+                else if(offloadingMode == OffloadingMode.HTTP) {
                   LOGGER.i("HTTP MODE");
                   List<OffloadingClassifierResult> serverResult;
                   try{
@@ -403,14 +426,20 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                   LOGGER.i("Converted to result: " + (SystemClock.uptimeMillis() - startTime3));
                 }
-                else if(detectorSettings.getOffloadingMode() == OffloadingMode.SOCKET){
+                else if(offloadingMode == OffloadingMode.SOCKET){
                   LOGGER.i("Offloading using socket connection");
 //                  OffloadingClassifierResult serverResult = off_socket_client.sendBitmap(croppedBitmap, socket);
 //                  final RectF boundingBox = new RectF(serverResult.getTopleft().getX(), serverResult.getTopleft().getY(), serverResult.getBottomRight().getX(), serverResult.getBottomRight().getY());
 //                  results.add(new Classifier.Recognition("Prediction ", serverResult.getLabel(), serverResult.getConfidence(), boundingBox));
                 }
 
+                detectionCount++;
                 lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+                LOGGER.i("INFERANCE: " + lastProcessingTimeMs);
+                totalInferanceTime += lastProcessingTimeMs;
+
+                averageInferanceTime = totalInferanceTime / detectionCount;
+                LOGGER.i("AVERAGE INFERANCE: " + averageInferanceTime);
 
                 cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
                 final Canvas canvas = new Canvas(cropCopyBitmap);
@@ -441,7 +470,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   final RectF location = result.getLocation();
                   if (location != null && result.getConfidence() >= minimumConfidence) {
 
-                    if(detectorSettings.getTesting()){
+                    if(testing){
                       OffloadingClassifierResult newResult = new OffloadingClassifierResult();
                       newResult.setLabel(result.getTitle());
                       newResult.setConfidence(result.getConfidence());
@@ -468,7 +497,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   }
                 }
 
-                if(detectorSettings.getTesting()){
+                if(testing){
                   try{
                     int resp = doc.postResult(testResults, imageCount);
                   }
@@ -477,10 +506,14 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   }
                 }
 
-                if(detectorSettings.getEnableTracking()){
+                if(tracking){
+                  final long trackingStart = SystemClock.uptimeMillis();
                   tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
+                  LOGGER.i("TRACKING TIME: " + (SystemClock.uptimeMillis() - trackingStart));
                   trackingOverlay.postInvalidate();
                 }
+
+                previousFrame = croppedBitmap;
 
                 requestRender();
                 computingDetection = false;

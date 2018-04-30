@@ -41,7 +41,7 @@ public class DetectionOffloadingClient {
         LOGGER.i("Converted to bytes: " + (SystemClock.uptimeMillis() - startTime2));
 
         Request request = new Request.Builder()
-                .url("http://db7af49d.ngrok.io/detect")
+                .url("http://192.168.6.131:5010/detect")
                 .post(RequestBody.create(MEDIA_TYPE_PLAINTEXT, byteImage))
                 .build();
 
@@ -61,7 +61,7 @@ public class DetectionOffloadingClient {
         String json_convert = mapper.writeValueAsString(results);
 
         Request request = new Request.Builder()
-                .url("http://db7af49d.ngrok.io/result")
+                .url("http://192.168.6.131:5010/detect")
                 .post(RequestBody.create(JSON, json_convert))
                 .build();
 

@@ -16,6 +16,7 @@
 
 package org.tensorflow.demo;
 
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -103,7 +104,7 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
   private static final float TEXT_SIZE_DIP = 10;
 
   @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
+  public void onPreviewSizeChosen(final Size size, final int rotation, SharedPreferences sharedPref) {
     final float textSizePx = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);

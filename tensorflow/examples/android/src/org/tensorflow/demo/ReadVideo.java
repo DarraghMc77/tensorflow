@@ -21,6 +21,7 @@ public class ReadVideo {
 
         ArrayList<Bitmap> gt_images=new ArrayList<Bitmap>();
         Bitmap bitmap = BitmapFactory.decodeFile("/storage/emulated/0/TestImages/Gt_Images/test" + imageCount + ".jpg");
+//        Bitmap bitmap = BitmapFactory.decodeFile("/Internal storage/Test/Gt_Images/test" + imageCount + ".jpg");
 
         return bitmap;
     }

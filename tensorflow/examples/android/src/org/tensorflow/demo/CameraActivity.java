@@ -20,7 +20,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
@@ -36,6 +36,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Trace;
+import android.preference.PreferenceManager;
 import android.util.Size;
 import android.view.KeyEvent;
 import android.view.Surface;
@@ -73,7 +74,7 @@ public abstract class CameraActivity extends Activity
   private Runnable postInferenceCallback;
   private Runnable imageConverter;
 
-  public static DetectorSettings detectorSettings;
+  SharedPreferences sharedPref;
 
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
@@ -83,8 +84,7 @@ public abstract class CameraActivity extends Activity
 
     setContentView(R.layout.activity_camera);
 
-    Intent otherIntent = getIntent();
-    detectorSettings = (DetectorSettings)otherIntent.getSerializableExtra("detectorSettings");
+    sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
     if (hasPermission()) {
       setFragment();
@@ -125,7 +125,7 @@ public abstract class CameraActivity extends Activity
         previewHeight = previewSize.height;
         previewWidth = previewSize.width;
         rgbBytes = new int[previewWidth * previewHeight];
-        onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90, detectorSettings);
+        onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90, sharedPref);
       }
     } catch (final Exception e) {
       LOGGER.e(e, "Exception!");
@@ -371,10 +371,10 @@ public abstract class CameraActivity extends Activity
                 }
 
                 @Override
-                public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
+                public void onPreviewSizeChosen(final Size size, final int rotation, SharedPreferences sharedPref) {
                   previewHeight = size.getHeight();
                   previewWidth = size.getWidth();
-                  CameraActivity.this.onPreviewSizeChosen(size, rotation, detectorSettings);
+                  CameraActivity.this.onPreviewSizeChosen(size, rotation, sharedPref);
                 }
               },
               this,
@@ -459,7 +459,7 @@ public abstract class CameraActivity extends Activity
 
   protected abstract void processImage();
 
-  protected abstract void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings);
+  protected abstract void onPreviewSizeChosen(final Size size, final int rotation, SharedPreferences sharedPref);
   protected abstract int getLayoutId();
   protected abstract Size getDesiredPreviewFrameSize();
 }

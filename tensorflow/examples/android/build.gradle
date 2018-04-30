@@ -147,6 +147,7 @@ android {
             universalApk true
         }
     }
+
 }
 
 task buildNativeBazel(type: Exec) {

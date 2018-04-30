@@ -23,6 +23,7 @@ import android.app.DialogFragment;
 import android.app.Fragment;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -117,7 +118,7 @@ public class CameraConnectionFragment extends Fragment {
   public interface ConnectionCallback {
     void onPreviewSizeChosen(Size size, int cameraRotation);
 
-      void onPreviewSizeChosen(Size size, int rotation, DetectorSettings detectorSettings);
+      void onPreviewSizeChosen(Size size, int rotation, SharedPreferences sharedPref);
   }
 
   /**
