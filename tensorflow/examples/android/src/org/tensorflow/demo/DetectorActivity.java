@@ -89,7 +89,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private static final DetectorMode MODE = DetectorMode.TF_OD_API;
 
   public enum OffloadingMode {
-    LOCAL, SOCKET, HTTP
+    LOCAL, SOCKET, HTTP, TRACKING
   }
 
 //  private static OffloadingMode OFF_MODE = OffloadingMode.LOCAL;
@@ -129,6 +129,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private DetectionOffloadingClient doc = new DetectionOffloadingClient();
   private ReadVideo videoReader = new ReadVideo();
   private static int imageCount = 0;
+  private Bitmap previousFrame = null;
+  public static Boolean trackingFailure = false;
 
 //  private static final Boolean testing = false;
 
@@ -289,20 +291,18 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     Intent batteryIntent = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
     int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-    LOGGER.i("BATTERY LEVEL: " + level);
-    LOGGER.i("SCALE:  " + scale);
+//    LOGGER.i("BATTERY LEVEL: " + level);
 
     ArrayList<Bitmap> gt_images = new ArrayList<Bitmap>();
     if (detectorSettings.getTesting()) {
-        try {
-          gt_images.add(videoReader.readVideo(getApplicationContext(), imageCount));
-        }
-        catch (Exception e){
-          System.out.println("err");
-          LOGGER.i("NEW ERROR: " + e.getMessage());
-        }
+      try {
+        gt_images.add(videoReader.readVideo(getApplicationContext(), imageCount));
+      } catch (Exception e) {
+        System.out.println("err");
+        LOGGER.i("NEW ERROR: " + e.getMessage());
+      }
 
-      if(imageCount < 629){
+      if (imageCount < 629) {
         imageCount++;
       }
     }
@@ -368,6 +368,26 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                 List<Classifier.Recognition> results = new ArrayList<Classifier.Recognition>();
 
+                double frameDifference = 0.0;
+
+                LOGGER.i("TRACKING FAILURE: "+ trackingFailure);
+                if(detectorSettings.getEnableTracking() && previousFrame != null) {
+                  frameDifference = videoReader.getDifferencePercent(croppedBitmap, previousFrame);
+                  LOGGER.i("FRAME DIFFERENCE: "+ frameDifference + "%");
+                }
+
+                LOGGER.i("FRAME DIFFERENCE TIME: " + (startTime - SystemClock.uptimeMillis()));
+
+                if(frameDifference > 10){
+                  detectorSettings.setOffloadingMode(OffloadingMode.TRACKING);
+                }
+                else{
+                  detectorSettings.setOffloadingMode(OffloadingMode.LOCAL);
+                  trackingFailure = false;
+                }
+
+                LOGGER.i("OFFLOADING MODE: "+ detectorSettings.getOffloadingMode().toString());
+
 //                OFF_MODE = offloadingDecision.makeDecision(lastProcessingTimeMs, LOCAL_PROCESSING_TIME);
 
                 if(detectorSettings.getOffloadingMode() == OffloadingMode.LOCAL){
@@ -411,7 +431,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 }
 
                 lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+                LOGGER.i("INFERENCE TIME: " + lastProcessingTimeMs);
 
+                previousFrame = Bitmap.createBitmap(croppedBitmap);
                 cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
                 final Canvas canvas = new Canvas(cropCopyBitmap);
                 final Paint paint = new Paint();

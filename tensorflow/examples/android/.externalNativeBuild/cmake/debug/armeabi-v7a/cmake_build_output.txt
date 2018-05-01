@@ -14,4 +14,4 @@
 -- Detecting CXX compile features - done
 -- Configuring done
 -- Generating done
--- Build files have been written to: /Users/Darragh/College/Dissertation/VC/tensorflow/tensorflow/examples/android/.externalNativeBuild/cmake/debug/armeabi-v7a
+-- Build files have been written to: /Users/Darragh/College/Dissertation/ThesisWriting/tensorflow/tensorflow/examples/android/.externalNativeBuild/cmake/debug/armeabi-v7a

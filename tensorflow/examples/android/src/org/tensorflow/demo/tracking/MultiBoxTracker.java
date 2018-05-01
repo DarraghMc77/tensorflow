@@ -28,13 +28,16 @@ import android.text.TextUtils;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.widget.Toast;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+
 import org.tensorflow.demo.Classifier.Recognition;
+import org.tensorflow.demo.DetectorActivity;
 import org.tensorflow.demo.env.BorderedText;
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 
 /**
  * A tracker wrapping ObjectTracker that also handles non-max suppression and matching existing
@@ -115,6 +118,10 @@ public class MultiBoxTracker {
 
   private Matrix getFrameToCanvasMatrix() {
     return frameToCanvasMatrix;
+  }
+
+  public List<TrackedRecognition> getTrackedObjects(){
+    return trackedObjects;
   }
 
   public synchronized void drawDebug(final Canvas canvas) {
@@ -237,7 +244,7 @@ public class MultiBoxTracker {
         logger.v("Removing tracked object %s because NCC is %.2f", trackedObject, correlation);
         trackedObject.stopTracking();
         trackedObjects.remove(recognition);
-
+        DetectorActivity.trackingFailure = true;
         availableColors.add(recognition.color);
       }
     }
