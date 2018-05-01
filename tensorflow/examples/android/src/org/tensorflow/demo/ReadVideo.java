@@ -41,15 +41,47 @@ public class ReadVideo {
             throw new IllegalArgumentException(String.format("Images must have the same dimensions: (%d,%d) vs. (%d,%d)", width, height, width2, height2));
         }
 
-        long diff = 0;
+        long diff1 = 0;
+        long diff2 = 0;
+        long diff3 = 0;
+        long diff4 = 0;
+
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                diff += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+                if(x < ((width / 2) - 1) && y < ((width / 2) - 1)){
+                    diff1 += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+                }
+                else if(x > ((width / 2) - 1) && y < ((width / 2) - 1)){
+                    diff2 += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+                }
+                else if(x < ((width / 2) - 1) && y > ((width / 2) - 1)){
+                    diff3 += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+                }
+                else if(x > ((width / 2) - 1) && y > ((width / 2) - 1)){
+                    diff4 += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+                }
             }
         }
-        long maxDiff = 255 * width * height;
 
-        return 100.0 * diff / maxDiff;
+        long maxDiff = 255 * width * height;
+        long quarterd = maxDiff / 4;
+
+        LOGGER.i("DIFF1: "+ 100 * diff1 / quarterd + "%");
+        LOGGER.i("DIFF2: "+ 100 * diff2 / quarterd + "%");
+        LOGGER.i("DIFF3: "+ 100 * diff3 / quarterd + "%");
+        LOGGER.i("DIFF4: "+ 100 * diff4 / quarterd+ "%");
+
+        int halfWidth = width / 2;
+        int halfHeight = height / 2;
+
+        // Split into 4 bitmaps
+        Bitmap top1 = Bitmap.createBitmap(img2, 0, 0, halfWidth, halfHeight);
+        Bitmap top2 = Bitmap.createBitmap(img2, halfWidth, 0, halfWidth, halfHeight);
+        Bitmap bottom1 = Bitmap.createBitmap(img2, 0, halfHeight, halfWidth, halfHeight);
+        Bitmap bottom2 = Bitmap.createBitmap(img2, halfWidth, halfHeight, halfWidth, halfHeight);
+
+
+        return 100.0 * (diff1 + diff2 + diff3 + diff4) / maxDiff;
     }
 
     public int pixelDiff(int rgb1, int rgb2) {

@@ -10,6 +10,7 @@ import org.tensorflow.demo.env.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -28,9 +29,18 @@ public class DetectionOffloadingClient {
     ObjectMapper mapper = new ObjectMapper();
     private static final Logger LOGGER = new Logger();
 
+    private static final int SERVER_TIMEOUT = 500;
+
     private static final MediaType MEDIA_TYPE_PLAINTEXT = MediaType
             .parse("text/plain; charset=uint-8");
+
     private final OkHttpClient client = new OkHttpClient();
+
+    OkHttpClient client1 = client.newBuilder()
+            .connectTimeout(500, TimeUnit.MILLISECONDS)
+            .writeTimeout(500, TimeUnit.MILLISECONDS)
+            .readTimeout(500, TimeUnit.MILLISECONDS)
+            .build();
 
     public static final MediaType JSON
             = MediaType.parse("application/json; charset=utf-8");
@@ -46,15 +56,37 @@ public class DetectionOffloadingClient {
                 .build();
 
         startTime2 = SystemClock.uptimeMillis();
-        Response response = client.newCall(request).execute();
+
+
+        Response response = client1.newCall(request).execute();
+        System.out.println("Response 1 succeeded: " + response);
+        LOGGER.i("Response 1 succeeded: " + response);
+
         LOGGER.i("Sent and Received Result: " + (SystemClock.uptimeMillis() - startTime2));
         String restr = response.body().string();
 
         startTime2 = SystemClock.uptimeMillis();
         List<OffloadingClassifierResult> classifierResult = mapper.readValue(restr, new TypeReference<List<OffloadingClassifierResult>>(){});
         LOGGER.i("Mapped to new value: " + (SystemClock.uptimeMillis() - startTime2));
-
         return classifierResult;
+
+//        LOGGER.i("Sent and Received Result: " + (SystemClock.uptimeMillis() - startTime2));
+//        String restr = response.body().string();
+//
+//        startTime2 = SystemClock.uptimeMillis();
+//        List<OffloadingClassifierResult> classifierResult = mapper.readValue(restr, new TypeReference<List<OffloadingClassifierResult>>(){});
+//        LOGGER.i("Mapped to new value: " + (SystemClock.uptimeMillis() - startTime2));
+
+//        return classifierResult;
+    }
+
+    public synchronized long testBandwidth(){
+
+        Request request = new Request.Builder()
+                .url("http://192.168.6.131:5010/test_download")
+                .build();
+
+        return 0;
     }
 
     public int postResult(List<OffloadingClassifierResult> results, int image_number) throws Exception {

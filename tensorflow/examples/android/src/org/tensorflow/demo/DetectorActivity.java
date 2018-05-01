@@ -366,7 +366,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 LOGGER.i("Running detection on image " + currTimestamp);
                 final long startTime = SystemClock.uptimeMillis();
 
-                List<Classifier.Recognition> results = new ArrayList<Classifier.Recognition>();
+                List<Classifier.Recognition> results = new ArrayList<>();
 
                 double frameDifference = 0.0;
 
@@ -382,7 +382,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   detectorSettings.setOffloadingMode(OffloadingMode.TRACKING);
                 }
                 else{
-                  detectorSettings.setOffloadingMode(OffloadingMode.LOCAL);
+                  detectorSettings.setOffloadingMode(OffloadingMode.HTTP);
                   trackingFailure = false;
                 }
 
@@ -390,17 +390,17 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
 //                OFF_MODE = offloadingDecision.makeDecision(lastProcessingTimeMs, LOCAL_PROCESSING_TIME);
 
-                if(detectorSettings.getOffloadingMode() == OffloadingMode.LOCAL){
-                  LOGGER.i("LOCAL Processing mode");
-                  results = detector.recognizeImage(croppedBitmap);
-                  LOGGER.i(results.toString());
-                }
-                else if(detectorSettings.getOffloadingMode() == OffloadingMode.HTTP) {
+                if(detectorSettings.getOffloadingMode() == OffloadingMode.HTTP) {
                   LOGGER.i("HTTP MODE");
                   List<OffloadingClassifierResult> serverResult;
                   try{
                     serverResult = doc.postImage(croppedBitmap, startTime);
                     LOGGER.i("Recieved Result End: " + (SystemClock.uptimeMillis() - startTime));
+                  }
+                  catch(IOException e){
+                    LOGGER.i("TIMEOUT: Switching to local processing: " + e);
+                    serverResult = null;
+                    detectorSettings.setOffloadingMode(OffloadingMode.LOCAL);
                   }
                   catch (Exception e){
                     serverResult = null;
@@ -410,7 +410,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   long startTime3 = SystemClock.uptimeMillis();
 
                   // TODO: use java 8 streams .map() - slower don't
-
                   for (OffloadingClassifierResult result: serverResult) {
                     final RectF boundingBox =
                             new RectF(
@@ -422,6 +421,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   }
 
                   LOGGER.i("Converted to result: " + (SystemClock.uptimeMillis() - startTime3));
+
+                }
+                else if(detectorSettings.getOffloadingMode() == OffloadingMode.LOCAL){
+                  LOGGER.i("LOCAL Processing mode");
+                  results = detector.recognizeImage(croppedBitmap);
+                  LOGGER.i(results.toString());
                 }
                 else if(detectorSettings.getOffloadingMode() == OffloadingMode.SOCKET){
                   LOGGER.i("Offloading using socket connection");
