@@ -1,7 +1,11 @@
 package org.tensorflow.demo;
 
+import android.content.Context;
 import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.SystemClock;
+import android.telephony.TelephonyManager;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +14,6 @@ import org.tensorflow.demo.env.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -36,10 +39,13 @@ public class DetectionOffloadingClient {
 
     private final OkHttpClient client = new OkHttpClient();
 
+//    OkHttpClient client1 = client.newBuilder()
+//            .connectTimeout(500, TimeUnit.MILLISECONDS)
+//            .writeTimeout(500, TimeUnit.MILLISECONDS)
+//            .readTimeout(500, TimeUnit.MILLISECONDS)
+//            .build();
+
     OkHttpClient client1 = client.newBuilder()
-            .connectTimeout(500, TimeUnit.MILLISECONDS)
-            .writeTimeout(500, TimeUnit.MILLISECONDS)
-            .readTimeout(500, TimeUnit.MILLISECONDS)
             .build();
 
     public static final MediaType JSON
@@ -59,7 +65,7 @@ public class DetectionOffloadingClient {
 
 
         Response response = client1.newCall(request).execute();
-        System.out.println("Response 1 succeeded: " + response);
+//        System.out.println("Response 1 succeeded: " + response);
         LOGGER.i("Response 1 succeeded: " + response);
 
         LOGGER.i("Sent and Received Result: " + (SystemClock.uptimeMillis() - startTime2));
@@ -80,20 +86,56 @@ public class DetectionOffloadingClient {
 //        return classifierResult;
     }
 
-    public synchronized long testBandwidth(){
+//    protected String doInBackground testBandwidth(){
+//
+//        Request request = new Request.Builder()
+//                .url("http://192.168.6.131:5010/test_download")
+//                .build();
+//
+//        return "";
+//    }
 
-        Request request = new Request.Builder()
-                .url("http://192.168.6.131:5010/test_download")
-                .build();
-
-        return 0;
+    public static String getNetworkClass(Context context) {
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo info = cm.getActiveNetworkInfo();
+        if(info==null || !info.isConnected())
+            return "-"; //not connected
+        if(info.getType() == ConnectivityManager.TYPE_WIFI)
+            return "WIFI";
+        if(info.getType() == ConnectivityManager.TYPE_MOBILE){
+            int networkType = info.getSubtype();
+            switch (networkType) {
+                case TelephonyManager.NETWORK_TYPE_GPRS:
+                case TelephonyManager.NETWORK_TYPE_EDGE:
+                case TelephonyManager.NETWORK_TYPE_CDMA:
+                case TelephonyManager.NETWORK_TYPE_1xRTT:
+                case TelephonyManager.NETWORK_TYPE_IDEN: //api<8 : replace by 11
+                    return "2G";
+                case TelephonyManager.NETWORK_TYPE_UMTS:
+                case TelephonyManager.NETWORK_TYPE_EVDO_0:
+                case TelephonyManager.NETWORK_TYPE_EVDO_A:
+                case TelephonyManager.NETWORK_TYPE_HSDPA:
+                case TelephonyManager.NETWORK_TYPE_HSUPA:
+                case TelephonyManager.NETWORK_TYPE_HSPA:
+                case TelephonyManager.NETWORK_TYPE_EVDO_B: //api<9 : replace by 14
+                case TelephonyManager.NETWORK_TYPE_EHRPD:  //api<11 : replace by 12
+                case TelephonyManager.NETWORK_TYPE_HSPAP:  //api<13 : replace by 15
+                    return "3G";
+                case TelephonyManager.NETWORK_TYPE_LTE:    //api<11 : replace by 13
+                case 19:  //LTE_CA
+                    return "4G";
+                default:
+                    return "?";
+            }
+        }
+        return "?";
     }
 
     public int postResult(List<OffloadingClassifierResult> results, int image_number) throws Exception {
         String json_convert = mapper.writeValueAsString(results);
 
         Request request = new Request.Builder()
-                .url("http://db7af49d.ngrok.io/result")
+                .url("http://192.168.6.131:5010/result")
                 .post(RequestBody.create(JSON, json_convert))
                 .build();
 

@@ -22,15 +22,18 @@ import android.graphics.Paint;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+
+import org.tensorflow.demo.env.Logger;
+import org.tensorflow.demo.env.Size;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+
 import javax.microedition.khronos.opengles.GL10;
-import org.tensorflow.demo.env.Logger;
-import org.tensorflow.demo.env.Size;
 
 /**
  * True object detector/tracker class that tracks objects across consecutive preview frames.
@@ -76,6 +79,7 @@ public class ObjectTracker {
    */
   private static final int MAX_FRAME_HISTORY_SIZE = 200;
 
+  // SET AS 2 UNLESS IN TEST MODE SET AS 1
   private static final int DOWNSAMPLE_FACTOR = 2;
 
   private final byte[] downsampledFrame;
@@ -91,6 +95,9 @@ public class ObjectTracker {
   private final Vector<PointF> debugHistory;
 
   private final LinkedList<TimestampedDeltas> timestampedDeltas;
+
+//  public static BufferedWriter outTrack;
+//  ObjectMapper mapper = new ObjectMapper();
 
   protected final int frameWidth;
   protected final int frameHeight;
@@ -264,7 +271,7 @@ public class ObjectTracker {
     final Matrix tempMatrix = new Matrix(matrix);
     tempMatrix.preScale(DOWNSAMPLE_FACTOR, DOWNSAMPLE_FACTOR);
     tempMatrix.getValues(matrixValues);
-    drawNative(cameraViewSize.width, cameraViewSize.height, matrixValues);
+//    drawNative(cameraViewSize.width, cameraViewSize.height, matrixValues);
   }
 
   public synchronized void nextFrame(
@@ -287,6 +294,7 @@ public class ObjectTracker {
 
     for (final TrackedObject trackedObject : trackedObjects.values()) {
       trackedObject.updateTrackedPosition();
+
     }
 
     if (updateDebugInfo) {
@@ -510,6 +518,10 @@ public class ObjectTracker {
       }
     }
 
+    public RectF getLastTrackedPosition(){
+      return lastTrackedPosition;
+    }
+
     public void stopTracking() {
       checkValidObject();
 
@@ -611,6 +623,40 @@ public class ObjectTracker {
   public synchronized TrackedObject trackObject(final RectF position, final byte[] frameData) {
     return new TrackedObject(position, lastTimestamp, frameData);
   }
+
+//  private void createFileOnDevice(Boolean append) throws IOException {
+//                /*
+//                 * Function to initially create the log file and it also writes the time of creation to file.
+//                 */
+//    File Root = Environment.getExternalStorageDirectory();
+//    if(Root.canWrite()){
+//      File  LogFile = new File(Root, "DetectLog.txt");
+//      FileWriter LogWriter = new FileWriter(LogFile, append);
+//      outTrack = new BufferedWriter(LogWriter);
+////      Date currentTime = Calendar.getInstance().getTime();
+//      Date date = new Date();
+//      outTrack.write("Logged at" + String.valueOf(date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds() + "\n"));
+//      outTrack.close();
+//
+//    }
+//  }
+//
+//  private void writeToFile(String message) throws IOException {
+//                /*
+//                 * Function to initially create the log file and it also writes the time of creation to file.
+//                 */
+//    File Root = Environment.getExternalStorageDirectory();
+//    if(Root.canWrite()){
+//      File  LogFile = new File(Root, "DetectLog.txt");
+//      FileWriter LogWriter = new FileWriter(LogFile, true);
+//      outTrack = new BufferedWriter(LogWriter);
+////      Date currentTime = Calendar.getInstance().getTime();
+//      Date date = new Date();
+//      outTrack.write(message + "\n");
+//      outTrack.close();
+//
+//    }
+//  }
 
   /** ********************* NATIVE CODE ************************************ */
 

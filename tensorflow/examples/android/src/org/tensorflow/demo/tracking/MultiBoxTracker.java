@@ -24,17 +24,27 @@ import android.graphics.Paint.Cap;
 import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
+import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.widget.Toast;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.tensorflow.demo.Classifier.Recognition;
 import org.tensorflow.demo.DetectorActivity;
+import org.tensorflow.demo.OffloadingClassifierResult;
 import org.tensorflow.demo.env.BorderedText;
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -57,6 +67,9 @@ public class MultiBoxTracker {
   // Allow replacement of the tracked box with new results if
   // correlation has dropped below this level.
   private static final float MARGINAL_CORRELATION = 0.75f;
+
+  public static BufferedWriter outTrack;
+  ObjectMapper mapper = new ObjectMapper();
 
   // Consider object to be lost if correlation falls below this threshold.
   private static final float MIN_CORRELATION = 0.3f;
@@ -114,6 +127,15 @@ public class MultiBoxTracker {
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, context.getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);
+
+    try {
+      createFileOnDevice(true);
+      writeToFile("testing123");
+    }
+    catch(Exception e){
+      System.out.println(e.toString());
+    }
+
   }
 
   private Matrix getFrameToCanvasMatrix() {
@@ -167,7 +189,10 @@ public class MultiBoxTracker {
     processResults(timestamp, results, frame);
   }
 
-  public synchronized void draw(final Canvas canvas) {
+
+
+//  GRAB RESULTS FROM HERE WHEN TESTING TRACKING
+  public synchronized void draw(final Canvas canvas, int imageCount) {
     final boolean rotated = sensorOrientation % 180 == 90;
     final float multiplier =
         Math.min(canvas.getHeight() / (float) (rotated ? frameWidth : frameHeight),
@@ -180,11 +205,36 @@ public class MultiBoxTracker {
             (int) (multiplier * (rotated ? frameWidth : frameHeight)),
             sensorOrientation,
             false);
+
+    List<OffloadingClassifierResult> testResults = new ArrayList<>();
+
     for (final TrackedRecognition recognition : trackedObjects) {
+
+      OffloadingClassifierResult newResult = new OffloadingClassifierResult();
+      newResult.setLabel(recognition.title);
+      newResult.setConfidence(recognition.detectionConfidence);
+
+      RectF lastTrackedPosition = recognition.trackedObject.getLastTrackedPosition();
+      OffloadingClassifierResult.Coordinate bottomRight = new OffloadingClassifierResult.Coordinate();
+      bottomRight.setX(lastTrackedPosition.right);
+
+      bottomRight.setY(lastTrackedPosition.bottom);
+      newResult.setBottomRight(bottomRight);
+
+      OffloadingClassifierResult.Coordinate topLeft = new OffloadingClassifierResult.Coordinate();
+      topLeft.setX(lastTrackedPosition.left);
+      topLeft.setY(lastTrackedPosition.top);
+      newResult.setTopleft(topLeft);
+
+      newResult.setImageNumber(imageCount);
+
+      testResults.add(newResult);
+
       final RectF trackedPos =
           (objectTracker != null)
               ? recognition.trackedObject.getTrackedPositionInPreviewFrame()
               : new RectF(recognition.location);
+
 
       getFrameToCanvasMatrix().mapRect(trackedPos);
       boxPaint.setColor(recognition.color);
@@ -198,6 +248,14 @@ public class MultiBoxTracker {
               : String.format("%.2f", recognition.detectionConfidence);
       borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.bottom, labelString);
     }
+    try{
+      String json_convert = mapper.writeValueAsString(testResults);
+
+      writeToFile(json_convert);
+    }
+    catch(Exception e){
+      System.out.println("here");
+    }
   }
 
   private boolean initialized = false;
@@ -208,7 +266,8 @@ public class MultiBoxTracker {
       final int rowStride,
       final int sensorOrientation,
       final byte[] frame,
-      final long timestamp) {
+      final long timestamp,
+      final int imageNumber) {
     if (objectTracker == null && !initialized) {
       ObjectTracker.clearInstance();
 
@@ -234,6 +293,7 @@ public class MultiBoxTracker {
 
     objectTracker.nextFrame(frame, null, timestamp, null, true);
 
+    List<OffloadingClassifierResult> testResults = new ArrayList<>();
     // Clean up any objects not worth tracking any more.
     final LinkedList<TrackedRecognition> copyList =
         new LinkedList<TrackedRecognition>(trackedObjects);
@@ -247,6 +307,34 @@ public class MultiBoxTracker {
         DetectorActivity.trackingFailure = true;
         availableColors.add(recognition.color);
       }
+      OffloadingClassifierResult newResult = new OffloadingClassifierResult();
+      newResult.setLabel(recognition.title);
+      newResult.setConfidence(recognition.detectionConfidence);
+
+      RectF lastTrackedPosition = recognition.trackedObject.getLastTrackedPosition();
+      OffloadingClassifierResult.Coordinate bottomRight = new OffloadingClassifierResult.Coordinate();
+      bottomRight.setX(lastTrackedPosition.right);
+
+      bottomRight.setY(lastTrackedPosition.bottom);
+      newResult.setBottomRight(bottomRight);
+
+      OffloadingClassifierResult.Coordinate topLeft = new OffloadingClassifierResult.Coordinate();
+      topLeft.setX(lastTrackedPosition.left);
+      topLeft.setY(lastTrackedPosition.top);
+      newResult.setTopleft(topLeft);
+
+      newResult.setImageNumber(imageNumber);
+
+      testResults.add(newResult);
+    }
+
+    try{
+      String json_convert = mapper.writeValueAsString(testResults);
+
+      writeToFile(json_convert);
+    }
+    catch(Exception e){
+      System.out.println("here");
     }
   }
 
@@ -424,5 +512,39 @@ public class MultiBoxTracker {
     trackedRecognition.color =
         recogToReplace != null ? recogToReplace.color : availableColors.poll();
     trackedObjects.add(trackedRecognition);
+  }
+
+  private void createFileOnDevice(Boolean append) throws IOException {
+                /*
+                 * Function to initially create the log file and it also writes the time of creation to file.
+                 */
+    File Root = Environment.getExternalStorageDirectory();
+    if(Root.canWrite()){
+      File  LogFile = new File(Root, "TrackLog.txt");
+      FileWriter LogWriter = new FileWriter(LogFile, append);
+      outTrack = new BufferedWriter(LogWriter);
+//      Date currentTime = Calendar.getInstance().getTime();
+      Date date = new Date();
+      outTrack.write("Logged at" + String.valueOf(date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds() + "\n"));
+      outTrack.close();
+
+    }
+  }
+
+  private void writeToFile(String message) throws IOException {
+                /*
+                 * Function to initially create the log file and it also writes the time of creation to file.
+                 */
+    File Root = Environment.getExternalStorageDirectory();
+    if(Root.canWrite()){
+      File  LogFile = new File(Root, "TrackLog.txt");
+      FileWriter LogWriter = new FileWriter(LogFile, true);
+      outTrack = new BufferedWriter(LogWriter);
+//      Date currentTime = Calendar.getInstance().getTime();
+      Date date = new Date();
+      outTrack.write(message + "\n");
+      outTrack.close();
+
+    }
   }
 }

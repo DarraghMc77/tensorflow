@@ -16,6 +16,8 @@
 
 package org.tensorflow.demo;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
@@ -29,10 +31,13 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.media.ImageReader.OnImageAvailableListener;
 import android.os.BatteryManager;
+import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Size;
 import android.util.TypedValue;
 import android.widget.Toast;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.tensorflow.demo.OverlayView.DrawCallback;
 import org.tensorflow.demo.env.BorderedText;
@@ -40,8 +45,12 @@ import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
 import org.tensorflow.demo.tracking.MultiBoxTracker;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
@@ -64,7 +73,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private static final String MB_LOCATION_FILE =
           "file:///android_asset/multibox_location_priors.txt";
 
-  private static final int TF_OD_API_INPUT_SIZE = 300;
+//  private static final int TF_OD_API_INPUT_SIZE = 300;
+  private static int TF_OD_API_INPUT_SIZE = 300;
   private static final String TF_OD_API_MODEL_FILE =
           "file:///android_asset/ssd_mobilenet_v1_android_export.pb";
   private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/coco_labels_list.txt";
@@ -75,7 +85,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   // DarkFlow (https://github.com/thtrieu/darkflow). Sample command:
   // ./flow --model cfg/tiny-yolo-voc.cfg --load bin/tiny-yolo-voc.weights --savepb --verbalise
   private static final String YOLO_MODEL_FILE = "file:///android_asset/graph-tiny-yolo-voc.pb";
-  private static final int YOLO_INPUT_SIZE = 416;
+  private static final int YOLO_INPUT_SIZE = 352;
+
   private static final String YOLO_INPUT_NAME = "input";
   private static final String YOLO_OUTPUT_NAMES = "output";
   private static final int YOLO_BLOCK_SIZE = 32;
@@ -86,7 +97,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private enum DetectorMode {
     TF_OD_API, MULTIBOX, YOLO;
   }
-  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
+  private static final DetectorMode MODE = DetectorMode.YOLO;
 
   public enum OffloadingMode {
     LOCAL, SOCKET, HTTP, TRACKING
@@ -114,6 +125,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private Bitmap rgbFrameBitmap = null;
   private Bitmap croppedBitmap = null;
   private Bitmap cropCopyBitmap = null;
+  private Bitmap sceneChangeBitmap = null;
 
   private boolean computingDetection = false;
 
@@ -140,6 +152,42 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   private final long LOCAL_PROCESSING_TIME = 600;
 
+  static NetworkContext mNS;
+
+  private int batteryLevel;
+  private IntentFilter mBatteryLevelFilter;
+
+  private long detectionCount = 0;
+  private long averageInferanceTime = 0;
+  private long totalInferanceTime = 0;
+
+  private long detectionCount2 = 0;
+  private long averageInferanceTime2 = 0;
+  private long totalInferanceTime2 = 0;
+
+  public static BufferedWriter out;
+
+  BroadcastReceiver mBatteryReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      batteryLevel = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+      Date date = new Date();
+      try {
+        writeToFile("BATTERY LEVEL: " + batteryLevel + "logged at" + String.valueOf(date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds() + "\n"));
+      }
+      catch(Exception e){
+        System.out.println(e.toString());
+      }
+      //Toast.makeText(context, "Current Battery Level: " + mBatteryLevel, Toast.LENGTH_LONG).show();
+      LOGGER.i("Battery Level: " + batteryLevel);
+    }
+  };
+
+  private void registerMyReceiver() {
+    mBatteryLevelFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+    registerReceiver(mBatteryReceiver, mBatteryLevelFilter);
+  }
+
   private BorderedText borderedText;
   @Override
   public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
@@ -149,9 +197,23 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     borderedText = new BorderedText(textSizePx);
     borderedText.setTypeface(Typeface.MONOSPACE);
 
+    registerMyReceiver();
+
+    try {
+      createFileOnDevice(true);
+    }
+    catch(Exception e){
+      System.out.println(e.toString());
+    }
+
+
+    mNS = NetworkContext.getInstance();
+
     if(detectorSettings.getEnableTracking()){
       tracker = new MultiBoxTracker(this);
     }
+
+//    TF_OD_API_INPUT_SIZE = detectorSettings.getResolution();
 
     int cropSize = TF_OD_API_INPUT_SIZE;
     if (MODE == DetectorMode.YOLO) {
@@ -159,11 +221,11 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
               TensorFlowYoloDetector.create(
                       getAssets(),
                       YOLO_MODEL_FILE,
-                      YOLO_INPUT_SIZE,
+                      detectorSettings.getResolution(),
                       YOLO_INPUT_NAME,
                       YOLO_OUTPUT_NAMES,
                       YOLO_BLOCK_SIZE);
-      cropSize = YOLO_INPUT_SIZE;
+      cropSize = detectorSettings.getResolution();
     } else if (MODE == DetectorMode.MULTIBOX) {
       detector =
               TensorFlowMultiBoxDetector.create(
@@ -179,8 +241,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     } else {
       try {
         detector = TensorFlowObjectDetectionAPIModel.create(
-                getAssets(), TF_OD_API_MODEL_FILE, TF_OD_API_LABELS_FILE, TF_OD_API_INPUT_SIZE);
-        cropSize = TF_OD_API_INPUT_SIZE;
+                getAssets(), TF_OD_API_MODEL_FILE, TF_OD_API_LABELS_FILE, detectorSettings.getResolution());
+        cropSize = detectorSettings.getResolution();
       } catch (final IOException e) {
         LOGGER.e("Exception initializing classifier!", e);
         Toast toast =
@@ -201,6 +263,11 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
       sensorOrientation = rotation - getScreenOrientation();
     }
 
+    if(detectorSettings.getTesting()){
+      DetectorTestActivity dta = new DetectorTestActivity();
+      dta.testImages(getApplicationContext(), detector);
+    }
+
     LOGGER.i("Camera orientation relative to screen canvas: %d", sensorOrientation);
 
     LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
@@ -210,7 +277,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     if(detectorSettings.getTesting()){
       frameToCropTransform =
               ImageUtils.getTransformationMatrix(
-                      300, 300,
+                      352, 352,
                       cropSize, cropSize,
                       sensorOrientation, MAINTAIN_ASPECT);
     }
@@ -231,7 +298,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
               new DrawCallback() {
                 @Override
                 public void drawCallback(final Canvas canvas) {
-                  tracker.draw(canvas);
+                  tracker.draw(canvas, imageCount);
                   if (isDebug()) {
                     tracker.drawDebug(canvas);
                   }
@@ -288,39 +355,70 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   @Override
   protected void processImage() {
 
-    Intent batteryIntent = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-    int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-    int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+//    Intent batteryIntent = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+//    int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+//    int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 //    LOGGER.i("BATTERY LEVEL: " + level);
 
+//    UpdateNetworkStatus(this, "http://192.168.6.131:5010/test_download", "");
+
+//    double testerr = mNS.getDownBw();
+
+
+//    final long startTime = SystemClock.uptimeMillis();
     ArrayList<Bitmap> gt_images = new ArrayList<Bitmap>();
     if (detectorSettings.getTesting()) {
       try {
         gt_images.add(videoReader.readVideo(getApplicationContext(), imageCount));
       } catch (Exception e) {
-        System.out.println("err");
         LOGGER.i("NEW ERROR: " + e.getMessage());
       }
 
-      if (imageCount < 629) {
+      if (imageCount <= 630) {
         imageCount++;
+      }
+      else{
+        imageCount = 0;
       }
     }
 
+//    LOGGER.i("READING IMAGE " + (SystemClock.uptimeMillis() - startTime));
+
+//    int w = gt_images.get(0).getWidth(), h = gt_images.get(0).getHeight();
+//    int[] rgb = new int[w * h];
+//    byte[] yuv = new byte[w * h];
+//
+//    final Canvas canvas = new Canvas(croppedBitmap);
+//    canvas.drawBitmap(gt_images.get(0), frameToCropTransform, null);
+//
+//    gt_images.get(0).getPixels(rgb, 0, w, 0, 0, w, h);
+//    populateYUVLuminanceFromRGB(rgb, yuv, w, h);
+//    ImageUtils.convertARGB8888ToYUV420SP(rgb, yuv, w, h);
+
     ++timestamp;
     final long currTimestamp = timestamp;
+    LOGGER.i("TRACKING TIMESTAMP " + currTimestamp);
+
+
+
     byte[] originalLuminance = getLuminance();
 
+    final long startTime = SystemClock.uptimeMillis();
     if(detectorSettings.getEnableTracking()){
       tracker.onFrame(
               previewWidth,
               previewHeight,
               getLuminanceStride(),
               sensorOrientation,
-              originalLuminance,
-              timestamp);
+              getLuminance(),
+              timestamp,
+              imageCount);
       trackingOverlay.postInvalidate();
     }
+    LOGGER.i("TRACKING TIME1: " + (SystemClock.uptimeMillis() - startTime));
+
+    final long startTime_ = SystemClock.uptimeMillis();
+    LOGGER.i("TRACKING TIME2: " + (SystemClock.uptimeMillis() - startTime_));
 
     // No mutex needed as this method is not reentrant.
     if (computingDetection) {
@@ -358,33 +456,76 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
               @Override
               public void run() {
 
-                if(detectorSettings.getTesting()){
-                  DetectorTestActivity dta = new DetectorTestActivity();
-                  dta.testImages(getApplicationContext(), detector);
-                }
+//                if(detectorSettings.getTesting()){
+//                  DetectorTestActivity dta = new DetectorTestActivity();
+//                  dta.testImages(getApplicationContext(), detector);
+//                }
 
                 LOGGER.i("Running detection on image " + currTimestamp);
                 final long startTime = SystemClock.uptimeMillis();
 
                 List<Classifier.Recognition> results = new ArrayList<>();
 
-                double frameDifference = 0.0;
+//                double frameDifference = 0.0;
 
-                LOGGER.i("TRACKING FAILURE: "+ trackingFailure);
-                if(detectorSettings.getEnableTracking() && previousFrame != null) {
-                  frameDifference = videoReader.getDifferencePercent(croppedBitmap, previousFrame);
-                  LOGGER.i("FRAME DIFFERENCE: "+ frameDifference + "%");
-                }
+//                LOGGER.i("TRACKING FAILURE: "+ trackingFailure);
+//                if(!trackingFailure){
+//                  detectorSettings.setOffloadingMode(OffloadingMode.TRACKING);
+//                }
+//                else{
+//                  detectorSettings.setOffloadingMode(OffloadingMode.LOCAL);
+//                }
 
-                LOGGER.i("FRAME DIFFERENCE TIME: " + (startTime - SystemClock.uptimeMillis()));
+                Boolean croppedScene = false;
 
-                if(frameDifference > 10){
-                  detectorSettings.setOffloadingMode(OffloadingMode.TRACKING);
-                }
-                else{
-                  detectorSettings.setOffloadingMode(OffloadingMode.HTTP);
-                  trackingFailure = false;
-                }
+//                if(detectorSettings.getEnableTracking() && previousFrame != null) {
+//                  double[] frameDifferences = videoReader.getDifferencePercent(croppedBitmap, previousFrame);
+//
+//                  int width = croppedBitmap.getWidth();
+//                  int height = croppedBitmap.getHeight();
+//
+//                  List<Integer> sectorChange = new ArrayList<>();
+//
+//                  for(int i = 0; i < frameDifferences.length - 1; i++){
+//                    if(frameDifferences[i] > 10){
+//                      sectorChange.add(i);
+//                    }
+//                  }
+//
+//                  frameDifference = frameDifferences[4];
+//                  LOGGER.i("FRAME DIFFERENCE: "+ frameDifference + "%");
+//
+//                  int halfWidth = width / 2;
+//                  int halfHeight = height / 2;
+//
+//                  if(sectorChange.size() == 1 && sectorChange.get(0) == 0){
+//                    sceneChangeBitmap = Bitmap.createBitmap(croppedBitmap, 0, 0, halfWidth, halfHeight);
+//                    croppedScene = true;
+//                  }
+//                  else if(sectorChange.size() == 1 && sectorChange.get(0) == 1){
+//                    sceneChangeBitmap = Bitmap.createBitmap(croppedBitmap, halfWidth, 0, halfWidth, halfHeight);
+//                    croppedScene = true;
+//                  }
+//                  else if(sectorChange.size() == 1 && sectorChange.get(0) == 2){
+//                    sceneChangeBitmap = Bitmap.createBitmap(croppedBitmap, 0, halfHeight, halfWidth, halfHeight);
+//                    croppedScene = true;
+//                  }
+//                  else if(sectorChange.size() == 1 && sectorChange.get(0) == 3){
+//                    sceneChangeBitmap = Bitmap.createBitmap(croppedBitmap, halfWidth, halfHeight, halfWidth, halfHeight);
+//                    croppedScene = true;
+//                  }
+//
+//                }
+//
+//                LOGGER.i("FRAME DIFFERENCE TIME: " + (startTime - SystemClock.uptimeMillis()));
+
+//                if(frameDifference > 10){
+//                  detectorSettings.setOffloadingMode(OffloadingMode.TRACKING);
+//                }
+//                else{
+//                  detectorSettings.setOffloadingMode(OffloadingMode.HTTP);
+//                  trackingFailure = false;
+//                }
 
                 LOGGER.i("OFFLOADING MODE: "+ detectorSettings.getOffloadingMode().toString());
 
@@ -399,24 +540,29 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   }
                   catch(IOException e){
                     LOGGER.i("TIMEOUT: Switching to local processing: " + e);
-                    serverResult = null;
+                    serverResult = new ArrayList<>();
                     detectorSettings.setOffloadingMode(OffloadingMode.LOCAL);
                   }
                   catch (Exception e){
-                    serverResult = null;
+                    serverResult = new ArrayList<>();
                     LOGGER.i("ERROR: Unable to connect to the server");
                   }
 
                   long startTime3 = SystemClock.uptimeMillis();
 
-                  // TODO: use java 8 streams .map() - slower don't
                   for (OffloadingClassifierResult result: serverResult) {
                     final RectF boundingBox =
+//                            new RectF(
+//                                    Math.max(0, result.getTopleft().getX() - result.getBottomRight().getX() / 2),
+//                                    Math.max(0, result.getTopleft().getY() - result.getBottomRight().getY() / 2),
+//                                    Math.min(300 - 1, result.getTopleft().getX() + result.getBottomRight().getX() / 2),
+//                                    Math.min(300 - 1, result.getTopleft().getY() + result.getBottomRight().getY() / 2));
+                            // maybe do max on front-end
                             new RectF(
-                                    Math.max(0, result.getTopleft().getX() - result.getBottomRight().getX() / 2),
-                                    Math.max(0, result.getTopleft().getY() - result.getBottomRight().getY() / 2),
-                                    Math.min(300 - 1, result.getTopleft().getX() + result.getBottomRight().getX() / 2),
-                                    Math.min(300 - 1, result.getTopleft().getY() + result.getBottomRight().getY() / 2));
+                                    result.getTopleft().getX(),
+                                    result.getTopleft().getY(),
+                                    result.getBottomRight().getX(),
+                                    result.getBottomRight().getY());
                     results.add(new Classifier.Recognition("Prediction ", result.getLabel(), result.getConfidence(), boundingBox));
                   }
 
@@ -425,7 +571,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 }
                 else if(detectorSettings.getOffloadingMode() == OffloadingMode.LOCAL){
                   LOGGER.i("LOCAL Processing mode");
-                  results = detector.recognizeImage(croppedBitmap);
+                  if(croppedScene){
+                    results = detector.recognizeImage(sceneChangeBitmap);
+                  }
+                  else{
+                    results = detector.recognizeImage(croppedBitmap);
+                  }
                   LOGGER.i(results.toString());
                 }
                 else if(detectorSettings.getOffloadingMode() == OffloadingMode.SOCKET){
@@ -435,8 +586,26 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 //                  results.add(new Classifier.Recognition("Prediction ", serverResult.getLabel(), serverResult.getConfidence(), boundingBox));
                 }
 
+                // Calculate average inferance time with the first detection excluded as the set up takes time, skewing results
+                detectionCount++;
+                if(detectionCount >= 2){
+                  lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+                  LOGGER.i("INFERENCE TIME: " + lastProcessingTimeMs);
+                  totalInferanceTime += lastProcessingTimeMs;
+
+                  averageInferanceTime = totalInferanceTime / detectionCount;
+                  LOGGER.i("AVERAGE INFERANCE: " + averageInferanceTime);
+                }
+
+                detectionCount2++;
+
                 lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-                LOGGER.i("INFERENCE TIME: " + lastProcessingTimeMs);
+                LOGGER.i("INFERENCE TIME2: " + lastProcessingTimeMs);
+                totalInferanceTime2 += lastProcessingTimeMs;
+
+                averageInferanceTime2 = totalInferanceTime2 / detectionCount2;
+                LOGGER.i("AVERAGE INFERANCE2: " + averageInferanceTime2);
+
 
                 previousFrame = Bitmap.createBitmap(croppedBitmap);
                 cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
@@ -468,7 +637,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   final RectF location = result.getLocation();
                   if (location != null && result.getConfidence() >= minimumConfidence) {
 
-                    if(detectorSettings.getTesting()){
+//                    if(detectorSettings.getTesting()){
                       OffloadingClassifierResult newResult = new OffloadingClassifierResult();
                       newResult.setLabel(result.getTitle());
                       newResult.setConfidence(result.getConfidence());
@@ -486,13 +655,22 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                       newResult.setImageNumber(imageCount);
 
                       testResults.add(newResult);
-                    }
+//                    }
                     canvas.drawRect(location, paint);
 
                     cropToFrameTransform.mapRect(location);
                     result.setLocation(location);
                     mappedRecognitions.add(result);
                   }
+                }
+
+                try{
+                  ObjectMapper mapper = new ObjectMapper();
+                  String json_convert = mapper.writeValueAsString(testResults);
+                  writeToFile(json_convert);
+                }
+                catch(Exception e){
+                  System.out.println("here");
                 }
 
                 if(detectorSettings.getTesting()){
@@ -505,14 +683,79 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 }
 
                 if(detectorSettings.getEnableTracking()){
+                  LOGGER.i("DETECTION TIMESTAMP " + currTimestamp);
                   tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
                   trackingOverlay.postInvalidate();
                 }
+
+//                lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+//                LOGGER.i("INFERENCE TIME: " + lastProcessingTimeMs);
 
                 requestRender();
                 computingDetection = false;
               }
             });
+  }
+
+  public static void UpdateNetworkStatus(Context context, String downUrl,
+                                         String upUrl) {
+    if (mNS == null) {
+      mNS = NetworkContext.getInstance();
+    }
+    mNS.UpdateNetworkContext(context, downUrl, upUrl);
+  }
+
+  private void createFileOnDevice(Boolean append) throws IOException {
+                /*
+                 * Function to initially create the log file and it also writes the time of creation to file.
+                 */
+    File Root = Environment.getExternalStorageDirectory();
+    if(Root.canWrite()){
+      File  LogFile = new File(Root, "DetectLog.txt");
+      FileWriter LogWriter = new FileWriter(LogFile, append);
+      out = new BufferedWriter(LogWriter);
+//      Date currentTime = Calendar.getInstance().getTime();
+      Date date = new Date();
+      out.write("Logged at" + String.valueOf(date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds() + "\n"));
+      out.close();
+
+    }
+  }
+
+  private void writeToFile(String message) throws IOException {
+                /*
+                 * Function to initially create the log file and it also writes the time of creation to file.
+                 */
+    File Root = Environment.getExternalStorageDirectory();
+    if(Root.canWrite()){
+      File  LogFile = new File(Root, "DetectLog.txt");
+      FileWriter LogWriter = new FileWriter(LogFile, true);
+      out = new BufferedWriter(LogWriter);
+//      Date currentTime = Calendar.getInstance().getTime();
+      Date date = new Date();
+      out.write(message + "\n");
+      out.close();
+
+    }
+  }
+
+  private void populateYUVLuminanceFromRGB(int[] rgb, byte[] yuv420sp, int width, int height) {
+    for (int i = 0; i < width * height; i++) {
+      float red = (rgb[i] >> 16) & 0xff;
+      float green = (rgb[i] >> 8) & 0xff;
+      float blue = (rgb[i]) & 0xff;
+      int luminance = (int) ((0.257f * red) + (0.504f * green) + (0.098f * blue) + 16);
+      yuv420sp[i] = (byte) (0xff & luminance);
+    }
+  }
+
+  public void writeToFile_(String message) {
+    try {
+      out.write(message + "\n");
+      out.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override

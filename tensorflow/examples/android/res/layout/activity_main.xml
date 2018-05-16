@@ -3,6 +3,25 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
+    <EditText
+        android:id="@+id/res_text"
+        android:layout_width="500.mm"
+        android:layout_height="20.mm"
+        android:layout_above="@+id/local_button"
+        android:layout_alignStart="@+id/local_button"
+        android:layout_marginBottom="52dp"
+        android:layout_marginStart="16dp" />
+
+    <Button
+        android:id="@+id/text_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/local_button"
+        android:layout_alignEnd="@+id/enable_testing_button"
+        android:layout_marginBottom="35dp"
+        android:text="Input text" />
+
+
     <Button
         android:id="@+id/local_button"
         android:layout_width="wrap_content"
