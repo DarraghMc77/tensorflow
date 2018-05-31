@@ -20,6 +20,7 @@ public class DetectorSettings implements Serializable {
         this.testing = testing;
         this.enableTracking = enableTracking;
         this.resolution = resolution;
+        this.trackingDecision = trackingDecision;
     }
 
     public Boolean getEnableTracking() {

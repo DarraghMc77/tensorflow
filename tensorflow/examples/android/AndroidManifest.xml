@@ -54,59 +54,22 @@
             </intent-filter>
         </activity>
 
+        <!--android:label="@string/title_activity_settings" />-->
+        <!--<activity-->
+            <!--android:name=".SettingsActivity"-->
+            <!--android:label="TF Detect"-->
+            <!--android:screenOrientation="portrait">-->
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.MAIN" />-->
+            <!--<category android:name="android.intent.category.LAUNCHER" />-->
+            <!--</intent-filter>-->
+        <!--</activity>-->
 
         <activity
             android:name=".DetectorActivity"
             android:label="TF Detect"
             android:screenOrientation="portrait">
         </activity>
-
-        <!--<activity-->
-        <!--android:name=".SettingsActivity"-->
-        <!--android:label="@string/title_activity_settings" />-->
-        <!--<activity android:name=".MainActivity">-->
-        <!--<intent-filter>-->
-        <!--<action android:name="android.intent.action.MAIN" />-->
-
-        <!--<category android:name="android.intent.category.LAUNCHER" />-->
-        <!--</intent-filter>-->
-        <!--</activity>-->
-
-
-        <!-- Other Tensorflow example applications not being used in this project-->
-
-        <!--<activity-->
-            <!--android:name=".StylizeActivity"-->
-            <!--android:label="@string/activity_name_stylize"-->
-            <!--android:screenOrientation="portrait">-->
-            <!--<intent-filter>-->
-                <!--<action android:name="android.intent.action.MAIN" />-->
-
-                <!--<category android:name="android.intent.category.LAUNCHER" />-->
-            <!--</intent-filter>-->
-        <!--</activity>-->
-        <!--<activity-->
-            <!--android:name=".SpeechActivity"-->
-            <!--android:label="@string/activity_name_speech"-->
-            <!--android:screenOrientation="portrait">-->
-            <!--<intent-filter>-->
-                <!--<action android:name="android.intent.action.MAIN" />-->
-
-                <!--<category android:name="android.intent.category.LAUNCHER" />-->
-            <!--</intent-filter>-->
-        <!--</activity>-->
-
-        <!--<activity-->
-        <!--android:name=".ClassifierActivity"-->
-        <!--android:label="@string/activity_name_classification"-->
-        <!--android:screenOrientation="portrait">-->
-        <!--<intent-filter>-->
-        <!--<action android:name="android.intent.action.MAIN" />-->
-
-        <!--<category android:name="android.intent.category.LAUNCHER" />-->
-        <!--</intent-filter>-->
-        <!--</activity>-->
-
 
     </application>
 

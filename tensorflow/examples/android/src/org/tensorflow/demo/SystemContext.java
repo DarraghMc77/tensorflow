@@ -11,10 +11,6 @@ import java.io.RandomAccessFile;
 
 import javax.annotation.Nonnull;
 
-/**
- * Created by Darragh on 24/05/2018.
- */
-
 public class SystemContext {
 
     private int batteryLevel;

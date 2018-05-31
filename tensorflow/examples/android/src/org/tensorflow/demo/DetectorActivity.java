@@ -455,7 +455,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                 LOGGER.i("OFFLOADING MODE: "+ detectorSettings.getOffloadingMode().toString());
 
-                OFF_MODE = offloadingDecision.makeDecision(networkContext);
+//                OFF_MODE = offloadingDecision.makeDecision(networkContext);
 
                 LOGGER.i("Running detection on image " + currTimestamp);
                 long startTime = SystemClock.uptimeMillis();
@@ -484,12 +484,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                   for (OffloadingClassifierResult result: serverResult) {
                     final RectF boundingBox =
-//                            new RectF(
-//                                    Math.max(0, result.getTopleft().getX() - result.getBottomRight().getX() / 2),
-//                                    Math.max(0, result.getTopleft().getY() - result.getBottomRight().getY() / 2),
-//                                    Math.min(300 - 1, result.getTopleft().getX() + result.getBottomRight().getX() / 2),
-//                                    Math.min(300 - 1, result.getTopleft().getY() + result.getBottomRight().getY() / 2));
-                            // maybe do max on front-end
                             new RectF(
                                     result.getTopleft().getX(),
                                     result.getTopleft().getY(),
