@@ -90,14 +90,14 @@
         android:layout_marginBottom="18dp"
         android:text="Launch Application" />
 
-    <!--<Button-->
-        <!--android:id="@+id/settings_button"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:layout_above="@+id/launch_button"-->
-        <!--android:layout_centerHorizontal="true"-->
-        <!--android:layout_marginBottom="12dp"-->
-        <!--android:text="Settings" />-->
+    <Button
+        android:id="@+id/settings_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/launch_button"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="12dp"
+        android:text="Settings" />
 
 
     <Button

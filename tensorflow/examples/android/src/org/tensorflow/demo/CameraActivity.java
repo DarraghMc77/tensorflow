@@ -20,7 +20,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
@@ -36,6 +36,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Trace;
+import android.preference.PreferenceManager;
 import android.util.Size;
 import android.view.KeyEvent;
 import android.view.Surface;
@@ -73,7 +74,12 @@ public abstract class CameraActivity extends Activity
   private Runnable postInferenceCallback;
   private Runnable imageConverter;
 
-  public static DetectorSettings detectorSettings;
+  public enum OffloadingMode {
+    LOCAL, HTTP, SOCKET, TRACKING
+  }
+
+  static DetectorSettings detectorSettings;
+  SharedPreferences sharedPref;
 
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
@@ -83,8 +89,23 @@ public abstract class CameraActivity extends Activity
 
     setContentView(R.layout.activity_camera);
 
-    Intent otherIntent = getIntent();
-    detectorSettings = (DetectorSettings)otherIntent.getSerializableExtra("detectorSettings");
+//    Intent otherIntent = getIntent();
+//    detectorSettings = (DetectorSettings)otherIntent.getSerializableExtra("detectorSettings");
+    sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+
+    Boolean tracking = sharedPref.getBoolean("tracking_switch", true);
+    Boolean testing = sharedPref.getBoolean("testing_switch", false);
+    Boolean trackingDecision = sharedPref.getBoolean("tracking_decision_switch", false);
+    int offloadingMode = Integer.parseInt(sharedPref.getString("offloading_mode", "0")); //java.lang.String cannot be cast to java.lang.Integer
+    int frameResolution = Integer.parseInt(sharedPref.getString("frame_resolution", "0"));
+
+    detectorSettings = new DetectorSettings(OffloadingMode.values()[offloadingMode], testing, tracking, frameResolution, trackingDecision);
+
+//    detectorSettings.setTrackingDecision(trackingDecision);
+//    detectorSettings.setOffloadingMode(OffloadingMode.values()[offloadingMode]);
+//    detectorSettings.setResolution(frameResolution);
+//    detectorSettings.setEnableTracking(tracking);
+//    detectorSettings.setTesting(testing);
 
     if (hasPermission()) {
       setFragment();

@@ -15,7 +15,7 @@ public class DetectorSettings implements Serializable {
     private int resolution;
     private Boolean trackingDecision;
 
-    public DetectorSettings(DetectorActivity.OffloadingMode offloadingMode, Boolean testing, Boolean enableTracking, int resolution, Boolean trackingDecision){
+    public DetectorSettings(CameraActivity.OffloadingMode offloadingMode, Boolean testing, Boolean enableTracking, int resolution, Boolean trackingDecision){
         this.offloadingMode = offloadingMode;
         this.testing = testing;
         this.enableTracking = enableTracking;

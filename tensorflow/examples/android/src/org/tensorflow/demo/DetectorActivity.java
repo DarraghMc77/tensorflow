@@ -98,9 +98,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   }
   private static final DetectorMode MODE = DetectorMode.YOLO;
 
-  public enum OffloadingMode {
-    LOCAL, SOCKET, HTTP, TRACKING
-  }
+//  public enum OffloadingMode {
+//    LOCAL, SOCKET, HTTP, TRACKING
+//  }
 
   private static OffloadingMode OFF_MODE;
 

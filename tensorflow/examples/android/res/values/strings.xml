@@ -32,16 +32,34 @@
     <string name="pref_title_display_name">Display name</string>
     <string name="pref_default_display_name">John Smith</string>
 
-    <string name="pref_title_add_friends_to_messages">Add friends to messages</string>
+    <string name="pref_title_add_friends_to_messages">Offloading Mode</string>
     <string-array name="pref_example_list_titles">
-        <item>Always</item>
-        <item>When possible</item>
-        <item>Never</item>
+        <item>Local</item>
+        <item>Offload</item>
     </string-array>
     <string-array name="pref_example_list_values">
         <item>1</item>
         <item>0</item>
-        <item>-1</item>
+    </string-array>
+
+    <string name="pref_resolution">Frame Resolution</string>
+    <string-array name="pref_resolution_list_titles">
+        <item>96</item>
+        <item>160</item>
+        <item>288</item>
+        <item>352</item>
+        <item>416</item>
+        <item>480</item>
+        <item>544</item>
+    </string-array>
+    <string-array name="pref_resolution_list_values">
+        <item>96</item>
+        <item>160</item>
+        <item>288</item>
+        <item>352</item>
+        <item>416</item>
+        <item>480</item>
+        <item>544</item>
     </string-array>
 
     <!-- Example settings for Data & Sync -->

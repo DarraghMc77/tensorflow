@@ -21,6 +21,7 @@ public class MainActivity extends Activity {
     Button enableTDecisionButton;
     Button disableTDecisionButton;
     Button mButton;
+    Button settings;
     EditText mEdit;
     DetectorSettings detectorSettings;
 
@@ -111,6 +112,17 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 detectorSettings.setEnableTracking(false);
 
+            }
+        });
+
+        launchApplication = (Button) findViewById(R.id.settings_button);
+
+        launchApplication.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Intent myIntent = new Intent(MainActivity.this,
+                        SettingsActivity.class);
+
+                startActivity(myIntent);
             }
         });
 
