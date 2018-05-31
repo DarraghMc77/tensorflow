@@ -103,5 +103,7 @@ public interface Classifier {
 
   String getStatString();
 
+  void setInputSize(int inputSize);
+
   void close();
 }

@@ -18,6 +18,8 @@ public class MainActivity extends Activity {
     Button launchApplication;
     Button enableTrackingButton;
     Button disableTrackingButton;
+    Button enableTDecisionButton;
+    Button disableTDecisionButton;
     Button mButton;
     EditText mEdit;
     DetectorSettings detectorSettings;
@@ -29,7 +31,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        detectorSettings = new DetectorSettings(DetectorActivity.OffloadingMode.LOCAL, false, true, 416);
+        detectorSettings = new DetectorSettings(DetectorActivity.OffloadingMode.LOCAL, false, true, 416, false);
 
         mButton = (Button)findViewById(R.id.text_button);
         mEdit   = (EditText)findViewById(R.id.res_text);
@@ -83,6 +85,23 @@ public class MainActivity extends Activity {
         enableTrackingButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 detectorSettings.setEnableTracking(true);
+            }
+        });
+
+        disableTDecisionButton = (Button) findViewById(R.id.disable_tdecision_button);
+
+        disableTDecisionButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                detectorSettings.setTrackingDecision(false);
+
+            }
+        });
+
+        enableTDecisionButton = (Button) findViewById(R.id.enable_tdecision_button);
+
+        enableTDecisionButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                detectorSettings.setTrackingDecision(true);
             }
         });
 

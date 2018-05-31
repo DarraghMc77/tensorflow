@@ -19,6 +19,12 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Trace;
+
+import org.tensorflow.Graph;
+import org.tensorflow.Operation;
+import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
+import org.tensorflow.demo.env.Logger;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,10 +34,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Vector;
-import org.tensorflow.Graph;
-import org.tensorflow.Operation;
-import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
-import org.tensorflow.demo.env.Logger;
 
 /**
  * Wrapper for frozen detection models trained using the Tensorflow Object Detection API:
@@ -200,6 +202,14 @@ public class TensorFlowObjectDetectionAPIModel implements Classifier {
     }
     Trace.endSection(); // "recognizeImage"
     return recognitions;
+  }
+
+  // change input size for use with offloading decision
+  @Override
+  public void setInputSize(int inputSize){
+    this.inputSize = inputSize;
+    this.intValues = new int[inputSize * inputSize];
+    this.byteValues = new byte[inputSize * inputSize * 3];
   }
 
   @Override

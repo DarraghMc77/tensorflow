@@ -268,6 +268,14 @@ public class TensorFlowMultiBoxDetector implements Classifier {
     return recognitions;
   }
 
+  // change input size for use with offloading decision
+  @Override
+  public void setInputSize(int inputSize){
+    this.inputSize = inputSize;
+    this.intValues = new int[inputSize * inputSize];
+    this.floatValues = new float[inputSize * inputSize * 3];
+  }
+
   @Override
   public void enableStatLogging(final boolean logStats) {
     this.logStats = logStats;

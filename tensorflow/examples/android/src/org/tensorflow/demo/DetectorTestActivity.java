@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
+import org.tensorflow.demo.tracking.MultiBoxTracker;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -31,8 +32,6 @@ import java.util.List;
  *
  */
 
-
-
 public class DetectorTestActivity {
 
     private ReadVideo videoReader = new ReadVideo();
@@ -46,21 +45,21 @@ public class DetectorTestActivity {
     float minimumConfidence = 0.25f;
     private DetectionOffloadingClient doc = new DetectionOffloadingClient();
     private Bitmap previousFrame = null;
-//    private MultiBoxTracker tracker;
+    private MultiBoxTracker tracker;
     private long timestamp = 0;
     private byte[] luminanceCopy;
     private Matrix frameToCanvasMatrix;
 
     private static final boolean MAINTAIN_ASPECT = true;
 
-    int cropSize = 352;
-    private int detectionDelay = 10;
+    private int detectionDelay = 0;
 
     public static BufferedWriter outTest;
 
     // MAYBE GRAB IMAGE 3 FRAMES AHEAD
-    public void testImages(Context context, Classifier detector){
-//        tracker = new MultiBoxTracker(context);
+    public void testImages(Context context, Classifier detector, int cropSize){
+        detector.setInputSize(cropSize);
+        tracker = new MultiBoxTracker(context);
 
         //mapping results of lower resolutions back to original resolution
         final boolean rotated = 0 % 180 == 90;
@@ -99,7 +98,7 @@ public class DetectorTestActivity {
 
             Bitmap gtFrame = null;
             try {
-                gtFrame = videoReader.readVideo(context, i);
+                gtFrame = ImageUtils.readGtImage(i);
             }
             catch (Exception e){
                 System.out.println("err");
@@ -110,17 +109,17 @@ public class DetectorTestActivity {
             canvas.drawBitmap(gtFrame, frameToCropTransform, null);
 
 //            int w = gt_images.get(0).getWidth(), h = gt_images.get(0).getHeight();
-            int w = croppedBitmap.getWidth(), h = croppedBitmap.getHeight();
-
-
-            int[] rgb = new int[w * h];
-            byte[] yuv = new byte[w * h];
-
-            croppedBitmap.getPixels(rgb, 0, w, 0, 0, w, h);
-            populateYUVLuminanceFromRGB(rgb, yuv, w, h);
-
-            ++timestamp;
-            final long currTimestamp = timestamp;
+//            int w = croppedBitmap.getWidth(), h = croppedBitmap.getHeight();
+//
+//
+//            int[] rgb = new int[w * h];
+//            byte[] yuv = new byte[w * h];
+//
+//            croppedBitmap.getPixels(rgb, 0, w, 0, 0, w, h);
+//            populateYUVLuminanceFromRGB(rgb, yuv, w, h);
+//
+//            ++timestamp;
+//            final long currTimestamp = timestamp;
 //            tracker.onFrame(
 //                    352,
 //                    352,
@@ -129,12 +128,11 @@ public class DetectorTestActivity {
 //                    yuv,
 //                    timestamp,
 //                    i);
-//            trackingOverlay.postInvalidate();
-
-            if (luminanceCopy == null) {
-                luminanceCopy = new byte[yuv.length];
-            }
-            System.arraycopy(yuv, 0, luminanceCopy, 0, yuv.length);
+//
+//            if (luminanceCopy == null) {
+//                luminanceCopy = new byte[yuv.length];
+//            }
+//            System.arraycopy(yuv, 0, luminanceCopy, 0, yuv.length);
 
 
             if(i > 2) {
@@ -145,7 +143,7 @@ public class DetectorTestActivity {
             if(i >= detectionDelay){
                 Bitmap gtFrame2 = null;
                 try {
-                    gtFrame2 = videoReader.readVideo(context, (i - detectionDelay));
+                    gtFrame2 = ImageUtils.readGtImage(i - detectionDelay);
                 }
                 catch (Exception e){
                     System.out.println("err");
@@ -227,7 +225,13 @@ public class DetectorTestActivity {
                     }
                 }
 
-//            tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
+//                int[] rgb2 = new int[w * h];
+//                byte[] yuv2 = new byte[w * h];
+//
+//                croppedBitmapDelay.getPixels(rgb2, 0, w, 0, 0, w, h);
+//                populateYUVLuminanceFromRGB(rgb2, yuv2, w, h);
+//
+//                tracker.trackResults(mappedRecognitions, yuv2, (currTimestamp - detectionDelay));
 
                 previousFrame = croppedBitmapDelay;
 //

@@ -183,6 +183,13 @@ public class TensorFlowImageClassifier implements Classifier {
   }
 
   @Override
+  public void setInputSize(int inputSize){
+    this.inputSize = inputSize;
+    this.intValues = new int[inputSize * inputSize];
+    this.floatValues = new float[inputSize * inputSize * 3];
+  }
+
+  @Override
   public void enableStatLogging(boolean logStats) {
     this.logStats = logStats;
   }

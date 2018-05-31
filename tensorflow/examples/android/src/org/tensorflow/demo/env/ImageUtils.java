@@ -16,8 +16,15 @@ limitations under the License.
 package org.tensorflow.demo.env;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.os.Environment;
+import android.os.SystemClock;
+
 import java.io.File;
 import java.io.FileOutputStream;
 
@@ -91,6 +98,45 @@ public class ImageUtils {
     }
   }
 
+  // Absolute difference between two rgb pixels
+  public static int pixelDiff(int rgb1, int rgb2) {
+    int r1 = (rgb1 >> 16) & 0xff;
+    int g1 = (rgb1 >>  8) & 0xff;
+    int b1 =  rgb1        & 0xff;
+    int r2 = (rgb2 >> 16) & 0xff;
+    int g2 = (rgb2 >>  8) & 0xff;
+    int b2 =  rgb2        & 0xff;
+    return Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+  }
+
+  // Absolute difference between two greyscale pixels
+  public static int pixelDiffGrey(int rgb1, int rgb2) {
+    int r1 = rgb1 & 0xff;
+    int r2 = rgb2 & 0xff;
+    return Math.abs(r1 - r2);
+  }
+
+  // Convert Bitmap image to greyscale
+  public static Bitmap toGrayscale(Bitmap bmpOriginal){
+    int width, height;
+    height = bmpOriginal.getHeight();
+    width = bmpOriginal.getWidth();
+
+    Bitmap bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+    Canvas c = new Canvas(bmpGrayscale);
+    Paint paint = new Paint();
+    ColorMatrix cm = new ColorMatrix();
+    cm.setSaturation(0);
+    ColorMatrixColorFilter f = new ColorMatrixColorFilter(cm);
+    paint.setColorFilter(f);
+    c.drawBitmap(bmpOriginal, 0, 0, paint);
+    return bmpGrayscale;
+  }
+
+  public static Bitmap readGtImage(int imageCount) throws Exception {
+    return BitmapFactory.decodeFile("/storage/emulated/0/TestImages/Gt_Images416/test" + imageCount + ".jpg");
+  }
+
   // This value is 2 ^ 18 - 1, and is used to clamp the RGB values before their ranges
   // are normalized to eight bits.
   static final int kMaxChannelValue = 262143;
@@ -98,18 +144,99 @@ public class ImageUtils {
   // Always prefer the native implementation if available.
   private static boolean useNativeConversion = true;
 
+  // Calculate absolute difference between two frames
+  public static long getDifferencePercent(Bitmap img1, Bitmap img2) {
+    Bitmap greyImg1 = toGrayscale(img1);
+    Bitmap greyImg2 = toGrayscale(img2);
+
+    int width = greyImg1.getWidth();
+    int height = greyImg1.getHeight();
+
+    int[] arr1 = new int[width * height];
+    int[] arr2 = new int[width * height];
+
+    greyImg1.getPixels(arr1, 0, width, 0, 0, width, height);
+    greyImg2.getPixels(arr2, 0, width, 0, 0, width, height);
+
+//     add native solution here
+    if (useNativeConversion) {
+      try {
+        final long startTime = SystemClock.uptimeMillis();
+        double[] results = new double[1];
+        long difference = ImageUtils.frameDifference(arr1, arr2, width, height, false);
+        long maxDiff = 255 * width * height;
+        LOGGER.i("FRAME DIFFERENCE TIME: " + (SystemClock.uptimeMillis() - startTime));
+        return 100 * difference / maxDiff;
+//        return ;
+      } catch (UnsatisfiedLinkError e) {
+        LOGGER.w(
+            "Native Frame Differencing implementation not found, falling back to Java implementation");
+        useNativeConversion = false;
+      }
+    }
+
+    // Java implementation of YUV420SP to ARGB8888 converting
+
+    int width2 = greyImg2.getWidth();
+    int height2 = greyImg2.getHeight();
+    if (width != width2 || height != height2) {
+      throw new IllegalArgumentException(String.format("Images must have the same dimensions: (%d,%d) vs. (%d,%d)", width, height, width2, height2));
+    }
+
+    int[] differences = new int[4];
+
+    final long startTime2 = SystemClock.uptimeMillis();
+    // no need for 2D array here if using arr1 & arr2
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        if(x < ((width / 2) - 1) && y < ((width / 2) - 1)){
+          differences[0] += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+        }
+        else if(x > ((width / 2) - 1) && y < ((width / 2) - 1)){
+          differences[1] += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+        }
+        else if(x < ((width / 2) - 1) && y > ((width / 2) - 1)){
+          differences[2] += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+        }
+        else if(x > ((width / 2) - 1) && y > ((width / 2) - 1)){
+          differences[3] += pixelDiffGrey(greyImg1.getPixel(x, y), greyImg2.getPixel(x, y));
+        }
+      }
+    }
+    LOGGER.i("FRAME DIFFERENCE TIME: " + (SystemClock.uptimeMillis() - startTime2));
+
+    long maxDiff = 255 * width * height;
+    long quarterd = maxDiff / 4;
+    long sumDifferences = 0;
+
+
+    double [] l_differences = new double[5];
+
+    for(int i = 0; i < l_differences.length - 1; i++){
+      sumDifferences += l_differences[i];
+      l_differences[i] = 100 * differences[i] / quarterd;
+      LOGGER.i("DIFF "+i +": "+ l_differences[i]+ "%");
+    }
+
+    l_differences[4] = 100.0 * (sumDifferences) / maxDiff;
+
+
+    return sumDifferences;
+
+  }
+
   public static void convertYUV420SPToARGB8888(
-      byte[] input,
-      int width,
-      int height,
-      int[] output) {
+          byte[] input,
+          int width,
+          int height,
+          int[] output) {
     if (useNativeConversion) {
       try {
         ImageUtils.convertYUV420SPToARGB8888(input, output, width, height, false);
         return;
       } catch (UnsatisfiedLinkError e) {
         LOGGER.w(
-            "Native YUV420SP -> RGB implementation not found, falling back to Java implementation");
+                "Native YUV420SP -> RGB implementation not found, falling back to Java implementation");
         useNativeConversion = false;
       }
     }
@@ -210,6 +337,9 @@ public class ImageUtils {
    */
   private static native void convertYUV420SPToARGB8888(
       byte[] input, int[] output, int width, int height, boolean halfSize);
+
+  private static native long frameDifference(
+          int[] input, int[] output, int width, int height, boolean halfSize);
 
   /**
    * Converts YUV420 semi-planar data to ARGB 8888 data using the supplied width

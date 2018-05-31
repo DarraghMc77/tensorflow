@@ -1,11 +1,7 @@
 package org.tensorflow.demo;
 
-import android.content.Context;
 import android.graphics.Bitmap;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.SystemClock;
-import android.telephony.TelephonyManager;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,8 +21,6 @@ import okhttp3.Response;
  * Created by Darragh on 09/02/2018.
  */
 
-//TODO: losing 15ms somewhere in here, taking 5ms over network, taking 64ms on server for detection, around 90ms following all of this
-// Could save about 3 ms using sockets as opposed to http
 public class DetectionOffloadingClient {
 
     ObjectMapper mapper = new ObjectMapper();
@@ -51,9 +45,10 @@ public class DetectionOffloadingClient {
     public static final MediaType JSON
             = MediaType.parse("application/json; charset=utf-8");
 
-    public List<OffloadingClassifierResult> postImage(Bitmap image, final long startTime) throws Exception {
+    public List<OffloadingClassifierResult> postImage(Bitmap image, final double bandwidth) throws Exception {
         long startTime2 = SystemClock.uptimeMillis();
         byte[] byteImage = getBytesFromBitmap(image);
+        long leng = byteImage.length;
         LOGGER.i("Converted to bytes: " + (SystemClock.uptimeMillis() - startTime2));
 
         Request request = new Request.Builder()
@@ -63,9 +58,15 @@ public class DetectionOffloadingClient {
 
         startTime2 = SystemClock.uptimeMillis();
 
+        // simulate bandwidth
+//        int sizeInBytes = byteImage.length;
+//        double arrivalTimesMs = System.currentTimeMillis() + (sizeInBytes*8.0 / (1024*1024*bandwidth))*1000;
+//        double tArrivalTimesMs = (sizeInBytes*8.0 / (1024*1024*bandwidth))*1000;
+
+//        Thread.sleep((long)tArrivalTimesMs);
+//        while( System.currentTimeMillis() < arrivalTimesMs);
 
         Response response = client1.newCall(request).execute();
-//        System.out.println("Response 1 succeeded: " + response);
         LOGGER.i("Response 1 succeeded: " + response);
 
         LOGGER.i("Sent and Received Result: " + (SystemClock.uptimeMillis() - startTime2));
@@ -76,14 +77,6 @@ public class DetectionOffloadingClient {
         LOGGER.i("Mapped to new value: " + (SystemClock.uptimeMillis() - startTime2));
         return classifierResult;
 
-//        LOGGER.i("Sent and Received Result: " + (SystemClock.uptimeMillis() - startTime2));
-//        String restr = response.body().string();
-//
-//        startTime2 = SystemClock.uptimeMillis();
-//        List<OffloadingClassifierResult> classifierResult = mapper.readValue(restr, new TypeReference<List<OffloadingClassifierResult>>(){});
-//        LOGGER.i("Mapped to new value: " + (SystemClock.uptimeMillis() - startTime2));
-
-//        return classifierResult;
     }
 
 //    protected String doInBackground testBandwidth(){
@@ -95,41 +88,6 @@ public class DetectionOffloadingClient {
 //        return "";
 //    }
 
-    public static String getNetworkClass(Context context) {
-        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo info = cm.getActiveNetworkInfo();
-        if(info==null || !info.isConnected())
-            return "-"; //not connected
-        if(info.getType() == ConnectivityManager.TYPE_WIFI)
-            return "WIFI";
-        if(info.getType() == ConnectivityManager.TYPE_MOBILE){
-            int networkType = info.getSubtype();
-            switch (networkType) {
-                case TelephonyManager.NETWORK_TYPE_GPRS:
-                case TelephonyManager.NETWORK_TYPE_EDGE:
-                case TelephonyManager.NETWORK_TYPE_CDMA:
-                case TelephonyManager.NETWORK_TYPE_1xRTT:
-                case TelephonyManager.NETWORK_TYPE_IDEN: //api<8 : replace by 11
-                    return "2G";
-                case TelephonyManager.NETWORK_TYPE_UMTS:
-                case TelephonyManager.NETWORK_TYPE_EVDO_0:
-                case TelephonyManager.NETWORK_TYPE_EVDO_A:
-                case TelephonyManager.NETWORK_TYPE_HSDPA:
-                case TelephonyManager.NETWORK_TYPE_HSUPA:
-                case TelephonyManager.NETWORK_TYPE_HSPA:
-                case TelephonyManager.NETWORK_TYPE_EVDO_B: //api<9 : replace by 14
-                case TelephonyManager.NETWORK_TYPE_EHRPD:  //api<11 : replace by 12
-                case TelephonyManager.NETWORK_TYPE_HSPAP:  //api<13 : replace by 15
-                    return "3G";
-                case TelephonyManager.NETWORK_TYPE_LTE:    //api<11 : replace by 13
-                case 19:  //LTE_CA
-                    return "4G";
-                default:
-                    return "?";
-            }
-        }
-        return "?";
-    }
 
     public int postResult(List<OffloadingClassifierResult> results, int image_number) throws Exception {
         String json_convert = mapper.writeValueAsString(results);
@@ -143,9 +101,31 @@ public class DetectionOffloadingClient {
         return 1;
     }
 
+    public int testDownloadBw(String fileLocation) throws Exception {
+
+        Request request = new Request.Builder()
+                .url("http://192.168.6.131:5010/test_download")
+                .build();
+
+        Response response = client.newCall(request).execute();
+
+        return response.code();
+    }
+
+    public int testUploadBw(byte[] uploadImage) throws Exception {
+
+        Request request = new Request.Builder()
+                .url("http://192.168.6.131:5010/test_upload")
+                .post(RequestBody.create(MEDIA_TYPE_PLAINTEXT, uploadImage))
+                .build();
+
+        Response response = client.newCall(request).execute();
+        return response.code();
+    }
+
     public byte[] getBytesFromBitmap(Bitmap bitmap) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream);
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
         return stream.toByteArray();
     }
 }

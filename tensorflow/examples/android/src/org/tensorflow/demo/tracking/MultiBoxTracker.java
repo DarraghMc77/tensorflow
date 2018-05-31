@@ -128,13 +128,13 @@ public class MultiBoxTracker {
             TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, context.getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);
 
-    try {
-      createFileOnDevice(true);
-      writeToFile("testing123");
-    }
-    catch(Exception e){
-      System.out.println(e.toString());
-    }
+//    try {
+//      createFileOnDevice(true);
+//      writeToFile("testing123");
+//    }
+//    catch(Exception e){
+//      System.out.println(e.toString());
+//    }
 
   }
 
@@ -192,7 +192,7 @@ public class MultiBoxTracker {
 
 
 //  GRAB RESULTS FROM HERE WHEN TESTING TRACKING
-  public synchronized void draw(final Canvas canvas, int imageCount) {
+  public synchronized void draw(final Canvas canvas, int imageCount, long lastProcessingTimeMs, final String offloadingMode) {
     final boolean rotated = sensorOrientation % 180 == 90;
     final float multiplier =
         Math.min(canvas.getHeight() / (float) (rotated ? frameWidth : frameHeight),
@@ -248,6 +248,8 @@ public class MultiBoxTracker {
               : String.format("%.2f", recognition.detectionConfidence);
       borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.bottom, labelString);
     }
+    borderedText.drawText(canvas, 100, 100, Long.toString(lastProcessingTimeMs));
+    borderedText.drawText(canvas, 100, 200, offloadingMode);
     try{
       String json_convert = mapper.writeValueAsString(testResults);
 
@@ -293,7 +295,7 @@ public class MultiBoxTracker {
 
     objectTracker.nextFrame(frame, null, timestamp, null, true);
 
-    List<OffloadingClassifierResult> testResults = new ArrayList<>();
+//    List<OffloadingClassifierResult> testResults = new ArrayList<>();
     // Clean up any objects not worth tracking any more.
     final LinkedList<TrackedRecognition> copyList =
         new LinkedList<TrackedRecognition>(trackedObjects);
@@ -307,35 +309,35 @@ public class MultiBoxTracker {
         DetectorActivity.trackingFailure = true;
         availableColors.add(recognition.color);
       }
-      OffloadingClassifierResult newResult = new OffloadingClassifierResult();
-      newResult.setLabel(recognition.title);
-      newResult.setConfidence(recognition.detectionConfidence);
-
-      RectF lastTrackedPosition = recognition.trackedObject.getLastTrackedPosition();
-      OffloadingClassifierResult.Coordinate bottomRight = new OffloadingClassifierResult.Coordinate();
-      bottomRight.setX(lastTrackedPosition.right);
-
-      bottomRight.setY(lastTrackedPosition.bottom);
-      newResult.setBottomRight(bottomRight);
-
-      OffloadingClassifierResult.Coordinate topLeft = new OffloadingClassifierResult.Coordinate();
-      topLeft.setX(lastTrackedPosition.left);
-      topLeft.setY(lastTrackedPosition.top);
-      newResult.setTopleft(topLeft);
-
-      newResult.setImageNumber(imageNumber);
-
-      testResults.add(newResult);
+//      OffloadingClassifierResult newResult = new OffloadingClassifierResult();
+//      newResult.setLabel(recognition.title);
+//      newResult.setConfidence(recognition.detectionConfidence);
+//
+//      RectF lastTrackedPosition = recognition.trackedObject.getLastTrackedPosition();
+//      OffloadingClassifierResult.Coordinate bottomRight = new OffloadingClassifierResult.Coordinate();
+//      bottomRight.setX(lastTrackedPosition.right);
+//
+//      bottomRight.setY(lastTrackedPosition.bottom);
+//      newResult.setBottomRight(bottomRight);
+//
+//      OffloadingClassifierResult.Coordinate topLeft = new OffloadingClassifierResult.Coordinate();
+//      topLeft.setX(lastTrackedPosition.left);
+//      topLeft.setY(lastTrackedPosition.top);
+//      newResult.setTopleft(topLeft);
+//
+//      newResult.setImageNumber(imageNumber);
+//
+//      testResults.add(newResult);
     }
 
-    try{
-      String json_convert = mapper.writeValueAsString(testResults);
-
-      writeToFile(json_convert);
-    }
-    catch(Exception e){
-      System.out.println("here");
-    }
+//    try{
+//      String json_convert = mapper.writeValueAsString(testResults);
+//
+//      writeToFile(json_convert);
+//    }
+//    catch(Exception e){
+//      System.out.println("here");
+//    }
   }
 
   private void processResults(

@@ -19,13 +19,15 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Trace;
+
+import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
+import org.tensorflow.demo.env.Logger;
+import org.tensorflow.demo.env.SplitTimer;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
-import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
-import org.tensorflow.demo.env.Logger;
-import org.tensorflow.demo.env.SplitTimer;
 
 /** An object detector that uses TF and a YOLO model to detect objects. */
 public class TensorFlowYoloDetector implements Classifier {
@@ -242,6 +244,14 @@ public class TensorFlowYoloDetector implements Classifier {
     timer.endSplit("processed results");
 
     return recognitions;
+  }
+
+  // change input size for use with offloading decision
+  @Override
+  public void setInputSize(int inputSize){
+    this.inputSize = inputSize;
+    this.intValues = new int[inputSize * inputSize];
+    this.floatValues = new float[inputSize * inputSize * 3];
   }
 
   @Override

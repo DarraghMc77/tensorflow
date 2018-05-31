@@ -6,6 +6,8 @@ package org.tensorflow.demo;
 
 public interface OffloadingDecisionEngine {
 
-    public DetectorActivity.OffloadingMode makeDecision(long previousDecisionTime, long localProcessingTime);
+    public DetectorActivity.OffloadingMode makeDecision(NetworkContext networkContext);
+
+    public int getResolution(NetworkContext networkContext, int minSpeed);
 
 }

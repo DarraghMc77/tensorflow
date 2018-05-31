@@ -13,8 +13,9 @@ public class DetectorSettings implements Serializable {
     private Boolean testing;
     private Boolean enableTracking;
     private int resolution;
+    private Boolean trackingDecision;
 
-    public DetectorSettings(DetectorActivity.OffloadingMode offloadingMode, Boolean testing, Boolean enableTracking, int resolution){
+    public DetectorSettings(DetectorActivity.OffloadingMode offloadingMode, Boolean testing, Boolean enableTracking, int resolution, Boolean trackingDecision){
         this.offloadingMode = offloadingMode;
         this.testing = testing;
         this.enableTracking = enableTracking;
@@ -43,6 +44,14 @@ public class DetectorSettings implements Serializable {
 
     public void setTesting(Boolean testing) {
         this.testing = testing;
+    }
+
+    public Boolean getTrackingDecision() {
+        return trackingDecision;
+    }
+
+    public void setTrackingDecision(Boolean trackingDecision) {
+        this.trackingDecision = trackingDecision;
     }
 
     public int getResolution() {

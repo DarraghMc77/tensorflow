@@ -19,6 +19,9 @@ limitations under the License.
 #include <jni.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <cstdlib>
+#include <cmath>
 
 #include "tensorflow/examples/android/jni/rgb2yuv.h"
 #include "tensorflow/examples/android/jni/yuv2rgb.h"
@@ -34,6 +37,11 @@ JNIEXPORT void JNICALL
 IMAGEUTILS_METHOD(convertYUV420SPToARGB8888)(
     JNIEnv* env, jclass clazz, jbyteArray input, jintArray output,
     jint width, jint height, jboolean halfSize);
+
+JNIEXPORT jlong JNICALL
+IMAGEUTILS_METHOD(frameDifference)(
+JNIEnv* env, jclass clazz, jintArray input, jintArray output,
+        jint width, jint height, jboolean halfSize);
 
 JNIEXPORT void JNICALL IMAGEUTILS_METHOD(convertYUV420ToARGB8888)(
     JNIEnv* env, jclass clazz, jbyteArray y, jbyteArray u, jbyteArray v,
@@ -80,6 +88,30 @@ IMAGEUTILS_METHOD(convertYUV420SPToARGB8888)(
 
   env->ReleaseByteArrayElements(input, i, JNI_ABORT);
   env->ReleaseIntArrayElements(output, o, 0);
+}
+
+JNIEXPORT jlong JNICALL
+IMAGEUTILS_METHOD(frameDifference)(
+        JNIEnv* env, jclass clazz, jintArray input, jintArray output,
+        jint width, jint height, jboolean halfSize) {
+  jboolean inputCopy = JNI_FALSE;
+  jint* const inp = env->GetIntArrayElements(input, &inputCopy);
+
+  jboolean outputCopy = JNI_FALSE;
+  jint* const oott = env->GetIntArrayElements(output, &outputCopy);
+
+  long totaldiff = 0.0 ;
+
+  for(int i = 0; i < height * width; i = i + 1){
+      int pixelFirst = inp[i] & 0xff;;
+      int pixelSecond = oott[i] & 0xff;;
+      totaldiff += std::abs( pixelFirst - pixelSecond );
+  }
+
+  env->ReleaseIntArrayElements(input, inp, JNI_ABORT);
+  env->ReleaseIntArrayElements(output, oott, 0);
+
+  return totaldiff;
 }
 
 JNIEXPORT void JNICALL IMAGEUTILS_METHOD(convertYUV420ToARGB8888)(
