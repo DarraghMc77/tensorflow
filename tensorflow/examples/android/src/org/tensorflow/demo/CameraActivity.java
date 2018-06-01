@@ -89,23 +89,15 @@ public abstract class CameraActivity extends Activity
 
     setContentView(R.layout.activity_camera);
 
-//    Intent otherIntent = getIntent();
-//    detectorSettings = (DetectorSettings)otherIntent.getSerializableExtra("detectorSettings");
     sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
     Boolean tracking = sharedPref.getBoolean("tracking_switch", true);
     Boolean testing = sharedPref.getBoolean("testing_switch", false);
     Boolean trackingDecision = sharedPref.getBoolean("tracking_decision_switch", false);
-    int offloadingMode = Integer.parseInt(sharedPref.getString("offloading_mode", "0")); //java.lang.String cannot be cast to java.lang.Integer
-    int frameResolution = Integer.parseInt(sharedPref.getString("frame_resolution", "0"));
+    int offloadingMode = Integer.parseInt(sharedPref.getString("offloading_mode", "0"));
+    int frameResolution = Integer.parseInt(sharedPref.getString("frame_resolution", "416"));
 
     detectorSettings = new DetectorSettings(OffloadingMode.values()[offloadingMode], testing, tracking, frameResolution, trackingDecision);
-
-//    detectorSettings.setTrackingDecision(trackingDecision);
-//    detectorSettings.setOffloadingMode(OffloadingMode.values()[offloadingMode]);
-//    detectorSettings.setResolution(frameResolution);
-//    detectorSettings.setEnableTracking(tracking);
-//    detectorSettings.setTesting(testing);
 
     if (hasPermission()) {
       setFragment();

@@ -94,7 +94,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   // checkpoints.  Optionally use legacy Multibox (trained using an older version of the API)
   // or YOLO.
   private enum DetectorMode {
-    TF_OD_API, MULTIBOX, YOLO;
+    TF_OD_API, YOLO;
   }
   private static final DetectorMode MODE = DetectorMode.YOLO;
 
@@ -199,15 +199,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 //    registerMyReceiver();
 
     OFF_MODE = detectorSettings.getOffloadingMode();
-    //use this
     defaultMode = detectorSettings.getOffloadingMode();
-
-//    try {
-//      createFileOnDevice(true);
-//    }
-//    catch(Exception e){
-//      System.out.println(e.toString());
-//    }
 
     if(detectorSettings.getEnableTracking()){
       tracker = new MultiBoxTracker(this);
@@ -224,19 +216,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                       YOLO_OUTPUT_NAMES,
                       YOLO_BLOCK_SIZE);
       cropSize = detectorSettings.getResolution();
-    } else if (MODE == DetectorMode.MULTIBOX) {
-      detector =
-              TensorFlowMultiBoxDetector.create(
-                      getAssets(),
-                      MB_MODEL_FILE,
-                      MB_LOCATION_FILE,
-                      MB_IMAGE_MEAN,
-                      MB_IMAGE_STD,
-                      MB_INPUT_NAME,
-                      MB_OUTPUT_LOCATIONS_NAME,
-                      MB_OUTPUT_SCORES_NAME);
-      cropSize = MB_INPUT_SIZE;
-    } else {
+    }
+    else {
       try {
         detector = TensorFlowObjectDetectionAPIModel.create(
                 getAssets(), TF_OD_API_MODEL_FILE, TF_OD_API_LABELS_FILE, detectorSettings.getResolution());
@@ -270,7 +251,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
     rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
-    croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Config.ARGB_8888); //TODO:: maybe change this to RGB_565 for performance increase
+    croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Config.ARGB_8888);
 
     if(detectorSettings.getTesting()){
       frameToCropTransform =
@@ -377,8 +358,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     final long currTimestamp = timestamp;
 //    LOGGER.i("TRACKING TIMESTAMP " + currTimestamp);
 
-
-
     byte[] originalLuminance = getLuminance();
 
     final long startTime = SystemClock.uptimeMillis();
@@ -455,7 +434,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                 LOGGER.i("OFFLOADING MODE: "+ detectorSettings.getOffloadingMode().toString());
 
-//                OFF_MODE = offloadingDecision.makeDecision(networkContext);
+                OFF_MODE = offloadingDecision.makeDecision(networkContext);
 
                 LOGGER.i("Running detection on image " + currTimestamp);
                 long startTime = SystemClock.uptimeMillis();
@@ -465,10 +444,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   LOGGER.i("HTTP MODE");
                   List<OffloadingClassifierResult> serverResult;
                   try{
-//                    byte[] byteImage = getBytesFromBitmap(croppedBitmap);
-//                long lengthImage = byteImage.length;
                     serverResult = doc.postImage(croppedBitmap, 2.5);
-//                    LOGGER.i("BANDWIDTH: " + (7000*8*1000)/(1024*1024*(SystemClock.uptimeMillis() - startTime)));
                   }
                   catch(IOException e){
                     LOGGER.i("TIMEOUT: Switching to local processing: " + e);
@@ -549,9 +525,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   case TF_OD_API:
                     minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
                     break;
-                  case MULTIBOX:
-                    minimumConfidence = MINIMUM_CONFIDENCE_MULTIBOX;
-                    break;
                   case YOLO:
                     minimumConfidence = MINIMUM_CONFIDENCE_YOLO;
                     break;
@@ -612,13 +585,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 //                }
 
                 if(detectorSettings.getEnableTracking()){
-                  LOGGER.i("DETECTION TIMESTAMP " + currTimestamp);
                   tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
                   trackingOverlay.postInvalidate();
                 }
-
-//                lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-//                LOGGER.i("INFERENCE TIME: " + lastProcessingTimeMs);
 
                 requestRender();
                 computingDetection = false;

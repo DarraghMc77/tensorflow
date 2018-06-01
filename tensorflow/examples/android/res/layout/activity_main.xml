@@ -3,119 +3,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
-    <EditText
-        android:id="@+id/res_text"
-        android:layout_width="500.mm"
-        android:layout_height="20.mm"
-        android:layout_above="@+id/local_button"
-        android:layout_alignStart="@+id/local_button"
-        android:layout_marginBottom="52dp"
-        android:layout_marginStart="16dp" />
-
-    <Button
-        android:id="@+id/text_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/local_button"
-        android:layout_alignEnd="@+id/enable_testing_button"
-        android:layout_marginBottom="35dp"
-        android:text="Input text" />
-
-
-    <Button
-        android:id="@+id/local_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/server_button"
-        android:layout_alignBottom="@+id/server_button"
-        android:layout_marginEnd="55dp"
-        android:layout_toStartOf="@+id/server_button"
-        android:text="Local" />
-
-    <Button
-        android:id="@+id/server_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginEnd="61dp"
-        android:layout_marginTop="131dp"
-        android:text="Server Based" />
-        android:layout_centerHorizontal="true" />
-
-    <Button
-        android:id="@+id/enable_testing_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/disable_testing_button"
-        android:layout_alignBottom="@+id/disable_testing_button"
-        android:layout_alignEnd="@+id/server_button"
-        android:text="Testing" />
-
-    <Button
-        android:id="@+id/disable_testing_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/local_button"
-        android:layout_below="@+id/local_button"
-        android:layout_marginTop="49dp"
-        android:text="Non-Testing" />
-        android:layout_centerHorizontal="true" />
-
-    <Button
-        android:id="@+id/enable_tracking_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/disable_testing_button"
-        android:layout_marginEnd="13dp"
-        android:layout_marginTop="52dp"
-        android:layout_toStartOf="@+id/server_button"
-        android:text="Enable Tracking" />
-
-    <Button
-        android:id="@+id/disable_tracking_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/enable_tracking_button"
-        android:layout_alignBottom="@+id/enable_tracking_button"
-        android:layout_alignStart="@+id/text_button"
-        android:text="Disable Tracking" />
+    <!--<ImageView-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_alignParentTop="true"-->
+        <!--android:layout_centerHorizontal="true"-->
+        <!--android:layout_marginTop="101dp"-->
+        <!--android:src="@drawable/ic_launcher" />-->
 
     <Button
         android:id="@+id/launch_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
+        android:layout_below="@+id/settings_button"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="18dp"
+        android:layout_marginTop="68dp"
         android:text="Launch Application" />
 
     <Button
         android:id="@+id/settings_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/launch_button"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="12dp"
+        android:layout_centerVertical="true"
         android:text="Settings" />
-
-
-    <Button
-        android:id="@+id/disable_tdecision_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/disable_tracking_button"
-        android:layout_below="@+id/enable_tracking_button"
-        android:layout_marginTop="22dp"
-        android:text="Disable T-Decision" />
-
-    <Button
-        android:id="@+id/enable_tdecision_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/disable_tdecision_button"
-        android:layout_alignBottom="@+id/disable_tdecision_button"
-        android:layout_alignEnd="@+id/enable_tracking_button"
-        android:text="Enable T-Decision" />
 
 </RelativeLayout>

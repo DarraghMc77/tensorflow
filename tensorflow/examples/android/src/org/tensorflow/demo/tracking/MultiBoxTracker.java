@@ -309,35 +309,8 @@ public class MultiBoxTracker {
         DetectorActivity.trackingFailure = true;
         availableColors.add(recognition.color);
       }
-//      OffloadingClassifierResult newResult = new OffloadingClassifierResult();
-//      newResult.setLabel(recognition.title);
-//      newResult.setConfidence(recognition.detectionConfidence);
-//
-//      RectF lastTrackedPosition = recognition.trackedObject.getLastTrackedPosition();
-//      OffloadingClassifierResult.Coordinate bottomRight = new OffloadingClassifierResult.Coordinate();
-//      bottomRight.setX(lastTrackedPosition.right);
-//
-//      bottomRight.setY(lastTrackedPosition.bottom);
-//      newResult.setBottomRight(bottomRight);
-//
-//      OffloadingClassifierResult.Coordinate topLeft = new OffloadingClassifierResult.Coordinate();
-//      topLeft.setX(lastTrackedPosition.left);
-//      topLeft.setY(lastTrackedPosition.top);
-//      newResult.setTopleft(topLeft);
-//
-//      newResult.setImageNumber(imageNumber);
-//
-//      testResults.add(newResult);
     }
 
-//    try{
-//      String json_convert = mapper.writeValueAsString(testResults);
-//
-//      writeToFile(json_convert);
-//    }
-//    catch(Exception e){
-//      System.out.println("here");
-//    }
   }
 
   private void processResults(

@@ -79,15 +79,6 @@ public class DetectionOffloadingClient {
 
     }
 
-//    protected String doInBackground testBandwidth(){
-//
-//        Request request = new Request.Builder()
-//                .url("http://192.168.6.131:5010/test_download")
-//                .build();
-//
-//        return "";
-//    }
-
 
     public int postResult(List<OffloadingClassifierResult> results, int image_number) throws Exception {
         String json_convert = mapper.writeValueAsString(results);
