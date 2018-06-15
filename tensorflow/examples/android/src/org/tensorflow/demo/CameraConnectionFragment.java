@@ -116,8 +116,6 @@ public class CameraConnectionFragment extends Fragment {
    */
   public interface ConnectionCallback {
     void onPreviewSizeChosen(Size size, int cameraRotation);
-
-      void onPreviewSizeChosen(Size size, int rotation, DetectorSettings detectorSettings);
   }
 
   /**

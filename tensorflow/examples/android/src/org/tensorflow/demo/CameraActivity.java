@@ -138,7 +138,7 @@ public abstract class CameraActivity extends Activity
         previewHeight = previewSize.height;
         previewWidth = previewSize.width;
         rgbBytes = new int[previewWidth * previewHeight];
-        onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90, detectorSettings);
+        onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90);
       }
     } catch (final Exception e) {
       LOGGER.e(e, "Exception!");
@@ -358,7 +358,7 @@ public abstract class CameraActivity extends Activity
         // This should help with legacy situations where using the camera2 API causes
         // distorted or otherwise broken previews.
         useCamera2API = (facing == CameraCharacteristics.LENS_FACING_EXTERNAL)
-            || isHardwareLevelSupported(characteristics, 
+            || isHardwareLevelSupported(characteristics,
                                         CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL);
         LOGGER.i("Camera API lv2?: %s", useCamera2API);
         return cameraId;
@@ -379,15 +379,10 @@ public abstract class CameraActivity extends Activity
           CameraConnectionFragment.newInstance(
               new CameraConnectionFragment.ConnectionCallback() {
                 @Override
-                public void onPreviewSizeChosen(Size size, int cameraRotation) {
-
-                }
-
-                @Override
-                public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
+                public void onPreviewSizeChosen(final Size size, final int rotation) {
                   previewHeight = size.getHeight();
                   previewWidth = size.getWidth();
-                  CameraActivity.this.onPreviewSizeChosen(size, rotation, detectorSettings);
+                  CameraActivity.this.onPreviewSizeChosen(size, rotation);
                 }
               },
               this,
@@ -472,7 +467,7 @@ public abstract class CameraActivity extends Activity
 
   protected abstract void processImage();
 
-  protected abstract void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings);
+  protected abstract void onPreviewSizeChosen(final Size size, final int rotation);
   protected abstract int getLayoutId();
   protected abstract Size getDesiredPreviewFrameSize();
 }

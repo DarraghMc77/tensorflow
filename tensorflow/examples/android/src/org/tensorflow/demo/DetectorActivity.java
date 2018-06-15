@@ -111,6 +111,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   private static final boolean MAINTAIN_ASPECT = MODE == DetectorMode.TF_OD_API;
 
+  // Change this to change camera resolution
   private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
 
   private static final boolean SAVE_PREVIEW_BITMAP = false;
@@ -189,7 +190,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   private BorderedText borderedText;
   @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation, DetectorSettings detectorSettings) {
+  public void onPreviewSizeChosen(final Size size, final int rotation) {
     final float textSizePx =
             TypedValue.applyDimension(
                     TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
@@ -434,7 +435,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                 LOGGER.i("OFFLOADING MODE: "+ detectorSettings.getOffloadingMode().toString());
 
-                OFF_MODE = offloadingDecision.makeDecision(networkContext);
+//                OFF_MODE = offloadingDecision.makeDecision(networkContext);
 
                 LOGGER.i("Running detection on image " + currTimestamp);
                 long startTime = SystemClock.uptimeMillis();
